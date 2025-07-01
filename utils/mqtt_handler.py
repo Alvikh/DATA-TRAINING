@@ -8,11 +8,17 @@ class MQTTHandler:
     def __init__(self, broker='broker.hivemq.com', port=1883, monitoring_topic='iot/monitoring', device_control_topic='smartpower/device/control', device_status_topic='smartpower/device/status', 
     device_alert_topic='smartpower/device/alert',
     control_topic_prefix=None):
+        # DB_CONFIG = {
+        #     'host': 'localhost',
+        #     'user': 'admin',
+        #     'password': 'admin',
+        #     'database': 'powersmart'
+        # }
         DB_CONFIG = {
             'host': 'localhost',
-            'user': 'admin',
-            'password': 'admin',
-            'database': 'powersmart'
+            'user': 'peymyid_pey',
+            'password': 'peymyid_pey',
+            'database': 'Pey12345.#@'
         }
         self.handler = MessageHandler(DB_CONFIG)
         self.broker = broker
