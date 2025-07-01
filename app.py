@@ -48,6 +48,35 @@ def health_check():
         'server': 'Energy Prediction API',
         'mqtt_status': mqtt_status
     })
+@app.route('/mqtt-status', methods=['GET'])
+def mqtt_status():
+    """Diagnose MQTT connection status and error if any"""
+    try:
+        # Status koneksi
+        status = "connected" if mqtt_handler.connected else "disconnected"
+        
+        # Tes koneksi langsung ke broker (jika perlu bisa lebih kompleks)
+        test_result = {}
+        try:
+            mqtt_handler.connect()  # attempt reconnect
+            test_result['reconnect_attempt'] = 'success'
+        except Exception as test_err:
+            test_result['reconnect_attempt'] = f'failed: {str(test_err)}'
+        
+        return jsonify({
+            'status': 'success',
+            'mqtt_connection_status': status,
+            'broker': mqtt_handler.broker,
+            'port': mqtt_handler.port,
+            'reconnect_test': test_result,
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
 
 # Endpoint untuk info model
 @app.route('/model-info', methods=['GET'])
