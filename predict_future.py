@@ -8,6 +8,7 @@ import io
 import base64
 
 app = Flask(__name__)
+app.debug = True
 
 def load_model_and_scaler(model_path, scaler_path):
     """Memuat model dan scaler yang sudah disimpan"""
