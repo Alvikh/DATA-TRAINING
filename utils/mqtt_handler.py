@@ -17,8 +17,8 @@ class MQTTHandler:
         DB_CONFIG = {
             'host': 'localhost',
             'user': 'peymyid_pey',
-            'password': 'peymyid_pey',
-            'database': 'Pey12345.#@'
+            'password': 'Pey12345.#@',
+            'database': 'peymyid_pey'
         }
         self.handler = MessageHandler(DB_CONFIG)
         self.broker = broker
