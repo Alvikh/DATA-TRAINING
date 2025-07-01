@@ -96,7 +96,7 @@ def generate_plot(results_df):
     plot_data = base64.b64encode(buffer.getvalue()).decode('utf-8')
     return plot_data
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/predict', methods=['GET', 'POST'])
 def predict():
     # Konfigurasi model
     MODEL_PATH = "models/energy_model.pkl"
