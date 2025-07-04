@@ -263,11 +263,11 @@ def api_predict_future():
         request_data = request.get_json()
         logger.info(f"Received request data: {request_data}")
         # Validasi input untuk prediksi masa depan
-        duration_type = request_data.get('duration_type') # 'week', 'month', 'year'
-        if duration_type not in ['week', 'month', 'year']:
+        duration_type = request_data.get('duration_type')  # 'day', 'week', 'month', 'year'
+        if duration_type not in ['day', 'week', 'month', 'year']:
             return jsonify({
                 'status': 'error',
-                'message': "Required field 'duration_type' must be 'week', 'month', or 'year'.",
+                'message': "Required field 'duration_type' must be 'day', 'week', 'month', or 'year'.",
                 'timestamp': datetime.now().isoformat()
             }), 400
         

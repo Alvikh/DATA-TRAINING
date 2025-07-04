@@ -31,25 +31,31 @@ def generate_future_dates(start_date, duration_type, num_periods=1):
     future_dates = []
     current_date = start_date
 
-    if duration_type == 'week':
+    if duration_type == 'day':
+        # Prediksi per jam untuk 24 jam
+        for _ in range(num_periods * 24):
+            future_dates.append(current_date)
+            current_date += timedelta(hours=1)
+    elif duration_type == 'week':
         # Prediksi per jam untuk 7 hari (168 jam)
         for _ in range(num_periods * 7 * 24):
             future_dates.append(current_date)
             current_date += timedelta(hours=1)
     elif duration_type == 'month':
         # Prediksi per jam untuk 30 hari (720 jam)
-        for _ in range(num_periods * 30 * 24): # Asumsi 30 hari per bulan
+        for _ in range(num_periods * 30 * 24):  # Asumsi 30 hari per bulan
             future_dates.append(current_date)
             current_date += timedelta(hours=1)
     elif duration_type == 'year':
         # Prediksi per jam untuk 365 hari (8760 jam)
-        for _ in range(num_periods * 365 * 24): # Asumsi 365 hari per tahun
+        for _ in range(num_periods * 365 * 24):  # Asumsi 365 hari per tahun
             future_dates.append(current_date)
             current_date += timedelta(hours=1)
     else:
-        raise ValueError("duration_type tidak valid. Gunakan 'week', 'month', atau 'year'.")
+        raise ValueError("duration_type tidak valid. Gunakan 'day', 'week', 'month', atau 'year'.")
     
     return future_dates
+
 
 def prepare_future_data(future_dates, last_sensor_data, numeric_features, time_features):
     """
