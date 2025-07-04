@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, send_file
-from datetime import datetime
+from datetime import datetime,timedelta
 import os
+import pandas as pd
 
 import json
 import logging
@@ -8,12 +9,12 @@ import logging
 from utils.mqtt_handler import MQTTHandler
 from utils.prediction_utils import (
     load_model_and_scaler,
-    generate_future_dates,
-    prepare_future_data,
-    predict_future,
+    generate_future_dates, # Import fungsi baru
+    prepare_future_data,   # Import fungsi baru
+    predict_future,        # Import fungsi baru
     generate_plot
 )
-# from utils import message_handler as MessageHandler
+
 app = Flask(__name__)
 
 # Konfigurasi path
@@ -48,14 +49,13 @@ def health_check():
         'server': 'Energy Prediction API',
         'mqtt_status': mqtt_status
     })
+
 @app.route('/mqtt-status', methods=['GET'])
 def mqtt_status():
     """Diagnose MQTT connection status and error if any"""
     try:
-        # Status koneksi
         status = "connected" if mqtt_handler.connected else "disconnected"
         
-        # Tes koneksi langsung ke broker (jika perlu bisa lebih kompleks)
         test_result = {}
         try:
             mqtt_handler.connect()  # attempt reconnect
@@ -107,7 +107,9 @@ def model_info():
 def publish_prediction():
     try:
         # Get prediction data first
-        prediction_response = predict()
+        # Asumsi ini memanggil api_predict() untuk single point prediction
+        # Jika ingin publish future prediction, perlu endpoint terpisah
+        prediction_response = api_predict() 
         if prediction_response.status_code != 200:
             return prediction_response
         
@@ -116,8 +118,11 @@ def publish_prediction():
         # Publish to MQTT
         topic = f"{mqtt_handler.control_topic_prefix}/prediction"
         message = json.dumps({
-            'predictions': data['predictions'],
-            'input_parameters': data['input_parameters']
+            'predictions': data['predicted_energy'], # Sesuaikan jika api_predict mengembalikan format berbeda
+            'input_parameters': {
+                'device_id': data.get('device_id'),
+                'measured_at': data.get('measured_at')
+            }
         })
         
         if mqtt_handler.publish(topic, message):
@@ -138,76 +143,241 @@ def publish_prediction():
             'message': str(e)
         }), 500
 
-# Endpoint utama untuk prediksi (sama seperti sebelumnya)
-@app.route('/predict', methods=['GET', 'POST'])
-def predict():
+@app.route('/api/predict', methods=['POST'])
+def api_predict():
     try:
         if not os.path.exists(MODEL_PATH) or not os.path.exists(SCALER_PATH):
             return jsonify({
                 'status': 'error',
-                'message': 'Model files not found'
+                'message': 'Model files not found',
+                'timestamp': datetime.now().isoformat()
             }), 404
-        
-        model, scaler = load_model_and_scaler(MODEL_PATH, SCALER_PATH)
-        
-        if request.method == 'POST':
-            if request.content_type == 'application/json':
-                data = request.get_json()
-            else:
-                data = request.form.to_dict()
-        else:
-            data = request.args.to_dict()
-        
-        try:
-            base_input = {
-                'voltage': float(data.get('voltage', 220)),
-                'current': float(data.get('current', 5.2)),
-                'power': float(data.get('power', 1100)),
-                'energy': float(data.get('energy', 2.5)),
-                'frequency': float(data.get('frequency', 50)),
-                'power_factor': float(data.get('power_factor', 0.95)),
-                'temperature': float(data.get('temperature', 28)),
-                'humidity': float(data.get('humidity', 65))
-            }
-            days = int(data.get('days', 7))
-        except ValueError as e:
+
+        if not request.is_json:
             return jsonify({
                 'status': 'error',
-                'message': f'Invalid parameter value: {str(e)}'
+                'message': 'Request must be JSON',
+                'timestamp': datetime.now().isoformat()
             }), 400
+
+        sensor_data = request.get_json()
         
-        start_date = datetime.now() + timedelta(days=1)
-        future_dates = generate_future_dates(start_date, days=days)
-        future_df = prepare_future_data(base_input, future_dates)
-        results_df = predict_future(model, scaler, future_df)
-        plot_data = generate_plot(results_df)
+        try:
+            measured_time = datetime.strptime(sensor_data.get('measured_at', ''), '%d-%m-%Y %H:%M:%S')
+        except (ValueError, TypeError):
+            measured_time = datetime.now()
+
+        # Daftar fitur numerik yang digunakan saat training (sesuai input Anda)
+        numeric_features = [
+            'voltage', 'current', 'energy', 
+            'frequency', 'power_factor', 'temperature', 'humidity'
+        ]
         
-        predictions = results_df[['timestamp', 'predicted_output']].rename(
-            columns={'timestamp': 'date', 'predicted_output': 'energy_consumption_kWh'}
-        ).to_dict('records')
+        # Daftar fitur waktu
+        time_features = ['hour', 'day_of_week', 'month', 'is_weekend']
+
+        # Gabungan semua fitur yang diharapkan model
+        all_model_features = numeric_features + time_features
+
+        # Validasi bahwa semua kunci yang dibutuhkan ada di sensor_data
+        # Hanya cek untuk fitur numerik yang diharapkan dari input JSON
+        required_input_numeric_keys = [
+            'voltage', 'current', 'energy', 'frequency',
+            'power_factor', 'temperature', 'humidity'
+        ]
+        for key in required_input_numeric_keys:
+            if key not in sensor_data:
+                raise KeyError(f"Missing required field: '{key}' in input JSON.")
+
+        input_features = {
+            'voltage': float(sensor_data['voltage']),
+            'current': float(sensor_data['current']),
+            'energy': float(sensor_data['energy']),
+            'frequency': float(sensor_data['frequency']),
+            'power_factor': float(sensor_data['power_factor']),
+            'temperature': float(sensor_data['temperature']),
+            'humidity': float(sensor_data['humidity']),
+            'hour': measured_time.hour,
+            'day_of_week': measured_time.weekday(),
+            'month': measured_time.month,
+            'is_weekend': 1 if measured_time.weekday() >= 5 else 0
+        }
+
+        model, scaler = load_model_and_scaler(MODEL_PATH, SCALER_PATH)
         
+        # Buat DataFrame dengan urutan kolom yang benar
+        input_df = pd.DataFrame([input_features], columns=all_model_features)
+        
+        # Scale fitur numerik
+        input_df[numeric_features] = scaler.transform(input_df[numeric_features])
+        
+        prediction = model.predict(input_df)[0]
+
         return jsonify({
             'status': 'success',
-            'predictions': predictions,
-            'plot_image': plot_data,
-            'input_parameters': base_input,
-            'prediction_days': days
+            'device_id': sensor_data.get('id', 'unknown'),
+            'measured_at': measured_time.strftime('%d-%m-%Y %H:%M:%S'),
+            'predicted_energy': float(prediction),
+            'units': 'Watt', # Asumsi target 'power' adalah Watt
+            'timestamp': datetime.now().isoformat()
         })
-    
-    except Exception as e:
-        logger.error(f"Error in prediction: {str(e)}", exc_info=True)
+
+    except KeyError as e:
         return jsonify({
             'status': 'error',
-            'message': str(e)
+            'message': f'Missing required field: {str(e)}',
+            'timestamp': datetime.now().isoformat()
+        }), 400
+    except ValueError as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Invalid data value: {str(e)}',
+            'timestamp': datetime.now().isoformat()
+        }), 400
+    except Exception as e:
+        logger.error(f"Prediction error: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'timestamp': datetime.now().isoformat()
         }), 500
+
+# --- ENDPOINT BARU UNTUK PREDIKSI MASA DEPAN ---
+@app.route('/api/predict-future', methods=['POST'])
+def api_predict_future():
+    try:
+        if not os.path.exists(MODEL_PATH) or not os.path.exists(SCALER_PATH):
+            return jsonify({
+                'status': 'error',
+                'message': 'Model files not found',
+                'timestamp': datetime.now().isoformat()
+            }), 404
+
+        if not request.is_json:
+            return jsonify({
+                'status': 'error',
+                'message': 'Request must be JSON',
+                'timestamp': datetime.now().isoformat()
+            }), 400
+
+        request_data = request.get_json()
+        logger.info(f"Received request data: {request_data}")
+        # Validasi input untuk prediksi masa depan
+        duration_type = request_data.get('duration_type') # 'week', 'month', 'year'
+        if duration_type not in ['week', 'month', 'year']:
+            return jsonify({
+                'status': 'error',
+                'message': "Required field 'duration_type' must be 'week', 'month', or 'year'.",
+                'timestamp': datetime.now().isoformat()
+            }), 400
+        
+        num_periods = int(request_data.get('num_periods', 1)) # Default 1 periode
+        
+        # last_sensor_data adalah baseline untuk fitur non-waktu
+        last_sensor_data = request_data.get('last_sensor_data')
+        logger.info(f"Validating last_sensor_data: {last_sensor_data}")
+
+        if not last_sensor_data:
+            return jsonify({
+                'status': 'error',
+                'message': "Required field 'last_sensor_data' is missing. Provide baseline sensor values.",
+                'timestamp': datetime.now().isoformat()
+            }), 400
+        
+        # Validasi kunci di last_sensor_data
+        required_baseline_keys = [
+            'voltage', 'current', 'energy', 'frequency',
+            'power_factor', 'temperature', 'humidity'
+        ]
+        logger.info(f"Required keys: {required_baseline_keys}")
+        for key in required_baseline_keys:
+            if key not in last_sensor_data:
+                raise KeyError(f"Missing required field in 'last_sensor_data': '{key}'.")
+            try:
+                last_sensor_data[key] = float(last_sensor_data[key])
+            except (ValueError, TypeError):
+                raise ValueError(f"Invalid data type for '{key}' in 'last_sensor_data'. Must be numeric.")
+
+        # Tentukan tanggal mulai prediksi
+        start_date_str = request_data.get('start_date') # Format 'DD-MM-YYYY HH:MM:SS'
+        try:
+            start_date = datetime.strptime(start_date_str, '%d-%m-%Y %H:%M:%S') if start_date_str else datetime.now()
+        except (ValueError, TypeError):
+            start_date = datetime.now() # Fallback to now if format is wrong
+
+        # Load model dan scaler
+        model, scaler = load_model_and_scaler(MODEL_PATH, SCALER_PATH)
+
+        # Daftar fitur numerik dan waktu (harus konsisten dengan training)
+        numeric_features = [
+            'voltage', 'current', 'energy', 
+            'frequency', 'power_factor', 'temperature', 'humidity'
+        ]
+        time_features = ['hour', 'day_of_week', 'month', 'is_weekend']
+        
+        # 1. Generate future dates
+        future_dates = generate_future_dates(start_date, duration_type, num_periods)
+
+        # 2. Prepare future data DataFrame
+        future_df = prepare_future_data(future_dates, last_sensor_data, numeric_features, time_features)
+
+        # 3. Predict future power usage
+        predictions = predict_future(model, scaler, future_df, numeric_features)
+
+        # Format output
+        formatted_predictions = []
+        for i, pred in enumerate(predictions):
+            formatted_predictions.append({
+                'timestamp': future_dates[i].strftime('%d-%m-%Y %H:%M:%S'),
+                'predicted_power': float(pred) # Target adalah 'power'
+            })
+        
+        # Generate plot (opsional, bisa dikirim sebagai base64 atau disimpan di server)
+        plot_path = generate_plot(future_dates, predictions, title=f"Prediksi Daya untuk {num_periods} {duration_type.capitalize()}")
+        plot_url = f"/plots/{os.path.basename(plot_path)}" # URL untuk mengakses plot jika di-serve statis
+
+        return jsonify({
+            'status': 'success',
+            'duration_type': duration_type,
+            'num_periods': num_periods,
+            'start_date': start_date.strftime('%d-%m-%Y %H:%M:%S'),
+            'predictions': formatted_predictions,
+            'plot_url': plot_url,
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except KeyError as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Missing required field: {str(e)}',
+            'timestamp': datetime.now().isoformat()
+        }), 400
+    except ValueError as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Invalid data value: {str(e)}',
+            'timestamp': datetime.now().isoformat()
+        }), 400
+    except Exception as e:
+        logger.error(f"Future prediction error: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+# Endpoint untuk melayani file plot statis
+@app.route('/plots/<filename>')
+def serve_plot(filename):
+    plot_dir = os.path.join(BASE_DIR, 'plots')
+    return send_file(os.path.join(plot_dir, filename), mimetype='image/png')
+
+
 @app.route('/mqtt-data', methods=['GET'])
 def get_mqtt_data():
     """Endpoint to get latest MQTT data"""
     try:
-        # Get topic filter from query parameter if exists
         topic_filter = request.args.get('topic')
-        
-        # Get data from MQTT handler
         data = mqtt_handler.get_latest_data(topic_filter)
         
         if topic_filter and not data:
@@ -255,11 +425,15 @@ def get_mqtt_data_by_topic(topic):
             'status': 'error',
             'message': str(e)
         }), 500
-    
+
+      
 if __name__ == "__main__":
-    # Buat folder models jika belum ada
+    # Buat folder models dan plots jika belum ada
     if not os.path.exists(MODEL_DIR):
         os.makedirs(MODEL_DIR)
+    plot_dir = os.path.join(BASE_DIR, 'plots')
+    if not os.path.exists(plot_dir):
+        os.makedirs(plot_dir)
     
     # Connect to MQTT
     try:
