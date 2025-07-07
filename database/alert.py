@@ -56,34 +56,34 @@ class AlertManager:
             alert_type=type,  # Changed from 'type' to 'alert_type' to match get_alerts parameter
             is_resolved=False,
             start_date=start_of_day,
-            end_date=end_of_day
+            end_date=end_of_day     
         )
         print(existing_alerts)
         if len(existing_alerts)>0:
             self.logger.info(f"Duplicate alert found for device {device_id} (type: {type}) - skipping creation")
-            return None
-        
-        # If no existing alert, proceed with creation
-        query = f"""
-        INSERT INTO {self.table_name} 
-        (device_id, type, message, severity, is_resolved, resolved_at, created_at, updated_at)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """
+            # return None
+        else:
+            # If no existing alert, proceed with creation
+            query = f"""
+            INSERT INTO {self.table_name} 
+            (device_id, type, message, severity, is_resolved, resolved_at, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """
 
-        now = datetime.now()
-        params = (
-            str(device_id),
-            type,
-            message,
-            severity.lower(),
-            is_resolved,
-            resolved_at,
-            now,
-            now
-        )
+            now = datetime.now()
+            params = (
+                str(device_id),
+                type,
+                message,
+                severity.lower(),
+                is_resolved,
+                resolved_at,
+                now,
+                now
+            )
 
-        with MySQLDatabase(**self.db_config) as db:
-            db.execute_query(query, params)
+            with MySQLDatabase(**self.db_config) as db:
+                db.execute_query(query, params)
 
     def get_alerts(
         self,

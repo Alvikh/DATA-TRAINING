@@ -160,7 +160,7 @@ class MessageHandler:
             
             # Prepare measurement data for database
             measurement_data = {
-                'device_id': device_id,
+                'device_id': payload.get('id'),
                 'voltage': payload.get('voltage'),
                 'current': payload.get('current'),
                 'power': payload.get('power'),
