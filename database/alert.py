@@ -39,27 +39,26 @@ class AlertManager:
         )
         """
     def create_alert(
-        self,
-        device_id: Union[str, int],
-        type: str,
-        message: str,
-        severity: str,
-        is_resolved: bool = False,
-        resolved_at: Optional[datetime] = None
-    ) -> Optional[int]:
-        # First check if there's an existing unresolved alert of same type for this device today
+    self,
+    device_id: Union[str, int],
+    type: str,  # This is the parameter name
+    message: str,
+    severity: str,
+    is_resolved: bool = False,
+    resolved_at: Optional[datetime] = None
+) -> Optional[int]:
         today = datetime.now().date()
         start_of_day = datetime.combine(today, datetime.min.time())
         end_of_day = datetime.combine(today, datetime.max.time())
         
         existing_alerts = self.get_alerts(
             device_id=device_id,
-            type=type,
+            alert_type=type,  # Changed from 'type' to 'alert_type' to match get_alerts parameter
             is_resolved=False,
             start_date=start_of_day,
             end_date=end_of_day
         )
-        
+    
         if existing_alerts:
             self.logger.info(f"Duplicate alert found for device {device_id} (type: {type}) - skipping creation")
             return None
@@ -84,17 +83,14 @@ class AlertManager:
         )
 
         with MySQLDatabase(**self.db_config) as db:
-            db.execute_query(query, params)
-        
-    def get_alert(self, alert_id: int) -> Optional[Dict]:
-        query = f"SELECT * FROM {self.table_name} WHERE id = %s"
-        with MySQLDatabase(**self.db_config) as db:
-            result = db.execute_query(query, (alert_id,), fetch=True)
-            return result[0] if result else None
+            if db.execute_query(query, params):
+                return db.cursor.lastrowid
+            return None
 
     def get_alerts(
         self,
         device_id: Optional[Union[str, int]] = None,
+        alert_type: Optional[str] = None,  # This is the parameter name we need to match
         is_resolved: Optional[bool] = None,
         severity: Optional[str] = None,
         start_date: Optional[datetime] = None,
@@ -109,6 +105,9 @@ class AlertManager:
         if device_id:
             conditions.append("device_id = %s")
             params.append(str(device_id))
+        if alert_type:  # Using 'alert_type' consistently
+            conditions.append("type = %s")  # Note: 'type' is the column name in SQL
+            params.append(alert_type)
         if is_resolved is not None:
             conditions.append("is_resolved = %s")
             params.append(is_resolved)
@@ -129,6 +128,12 @@ class AlertManager:
 
         with MySQLDatabase(**self.db_config) as db:
             return db.execute_query(query, tuple(params), fetch=True) or []
+        
+    def get_alert(self, alert_id: int) -> Optional[Dict]:
+        query = f"SELECT * FROM {self.table_name} WHERE id = %s"
+        with MySQLDatabase(**self.db_config) as db:
+            result = db.execute_query(query, (alert_id,), fetch=True)
+            return result[0] if result else None
 
     def update_alert(self, alert_id: int, **kwargs) -> bool:
         if not kwargs:
