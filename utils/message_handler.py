@@ -157,7 +157,7 @@ class MessageHandler:
         try:
             # Extract device ID from topic (assuming format like "devices/PS-1001/telemetry")
             device_id = topic.split('/')[1] if '/' in topic else topic
-            print(f"id = ${payload.get('id')}")
+            print(f"id = {payload.get('id')}")
             # Prepare measurement data for database
             measurement_data = {
                 'device_id': payload.get('id'),

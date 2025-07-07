@@ -51,13 +51,15 @@ class EnergyMeasurement:
             raise ValueError(f"Missing required fields: {required_fields}")
 
         query = """
-        INSERT INTO energy_measurements 
-        (device_id, voltage, current, power, energy, frequency, 
-         power_factor, temperature, humidity, measured_at)
-        VALUES (%(device_id)s, %(voltage)s, %(current)s, %(power)s, %(energy)s, 
-                %(frequency)s, %(power_factor)s, %(temperature)s, %(humidity)s, 
-                %(measured_at)s)
-        """
+            INSERT INTO energy_measurements 
+            (device_id, voltage, current, power, energy, frequency, 
+            power_factor, temperature, humidity, measured_at,
+            created_at, updated_at)
+            VALUES (%(device_id)s, %(voltage)s, %(current)s, %(power)s, %(energy)s, 
+                    %(frequency)s, %(power_factor)s, %(temperature)s, %(humidity)s, 
+                    %(measured_at)s,
+                    NOW(), NOW())
+            """
         
         # Set default values for optional fields
         measurement_data.setdefault('frequency', None)
