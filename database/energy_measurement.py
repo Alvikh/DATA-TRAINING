@@ -40,24 +40,39 @@ class EnergyMeasurement:
         (device_id, voltage, current, power, energy, frequency,
         power_factor, temperature, humidity, measured_at)
         VALUES (
-            %(device_id)s,
-            %(voltage)s,
-            %(current)s,
-            %(power)s,
-            %(energy)s,
-            %(frequency)s,
-            %(power_factor)s,
-            %(temperature)s,
-            %(humidity)s,
-            %(measured_at)s
+            %(device_id)s,                      -- VARCHAR
+            CAST(%(voltage)s AS DECIMAL(10,2)), -- DECIMAL
+            CAST(%(current)s AS DECIMAL(10,2)),
+            CAST(%(power)s AS DECIMAL(10,2)),
+            CAST(%(energy)s AS DECIMAL(10,2)),
+            CAST(%(frequency)s AS DECIMAL(10,2)),
+            CAST(%(power_factor)s AS DECIMAL(10,2)),
+            CAST(%(temperature)s AS DECIMAL(10,2)),
+            CAST(%(humidity)s AS DECIMAL(10,2)),
+            %(measured_at)s                     -- TIMESTAMP
         )
         """
+        
+        # Convert and validate all numeric values
         try:
-            with MySQLDatabase(**self.db_config) as db:
-                return db.execute_query(query, measurement_data, return_lastrowid=True)
-        except Exception as e:
-            self.logger.error(f"Failed to create measurement: {e}")
+            params = {
+                'device_id': str(measurement_data['device_id']),
+                'voltage': float(measurement_data.get('voltage', 0)),
+                'current': float(measurement_data.get('current', 0)),
+                'power': float(measurement_data.get('power', 0)),
+                'energy': float(measurement_data.get('energy', 0)),
+                'frequency': float(measurement_data.get('frequency', 0)),
+                'power_factor': float(measurement_data.get('power_factor', 0)),
+                'temperature': float(measurement_data.get('temperature')),
+                'humidity': float(measurement_data.get('humidity')),
+                'measured_at': measurement_data.get('measured_at', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            }
+        except (ValueError, TypeError) as e:
+            self.logger.error(f"Data conversion error: {e}")
             return None
+
+        with MySQLDatabase(**self.db_config) as db:
+            return db.execute_query(query, params, return_lastrowid=True)
 
     def get_by_id(self, measurement_id: int) -> Optional[Dict]:
         """
