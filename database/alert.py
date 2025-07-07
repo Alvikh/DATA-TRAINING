@@ -38,7 +38,6 @@ class AlertManager:
             INDEX (severity)
         )
         """
-
     def create_alert(
         self,
         device_id: Union[str, int],
@@ -48,6 +47,24 @@ class AlertManager:
         is_resolved: bool = False,
         resolved_at: Optional[datetime] = None
     ) -> Optional[int]:
+        # First check if there's an existing unresolved alert of same type for this device today
+        today = datetime.now().date()
+        start_of_day = datetime.combine(today, datetime.min.time())
+        end_of_day = datetime.combine(today, datetime.max.time())
+        
+        existing_alerts = self.get_alerts(
+            device_id=device_id,
+            alert_type=alert_type,
+            is_resolved=False,
+            start_date=start_of_day,
+            end_date=end_of_day
+        )
+        
+        if existing_alerts:
+            self.logger.info(f"Duplicate alert found for device {device_id} (type: {alert_type}) - skipping creation")
+            return None
+        
+        # If no existing alert, proceed with creation
         query = f"""
         INSERT INTO {self.table_name} 
         (device_id, type, message, severity, is_resolved, resolved_at, created_at, updated_at)
@@ -67,10 +84,8 @@ class AlertManager:
         )
 
         with MySQLDatabase(**self.db_config) as db:
-            if db.execute_query(query, params):
-                return db.cursor.lastrowid
-            return None
-
+            db.execute_query(query, params)
+        
     def get_alert(self, alert_id: int) -> Optional[Dict]:
         query = f"SELECT * FROM {self.table_name} WHERE id = %s"
         with MySQLDatabase(**self.db_config) as db:
