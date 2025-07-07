@@ -133,7 +133,7 @@ class MessageHandler:
                 severity=severity,
                 is_resolved=False
             )
-
+            print(f"alert id = {alert_id}")
             if alert_id:
                 with self.data_lock:
                     self.latest_data[topic] = {
