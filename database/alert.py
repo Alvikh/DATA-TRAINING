@@ -58,7 +58,7 @@ class AlertManager:
             start_date=start_of_day,
             end_date=end_of_day
         )
-    
+        print(existing_alerts)
         if len(existing_alerts)>0:
             self.logger.info(f"Duplicate alert found for device {device_id} (type: {type}) - skipping creation")
             return None
