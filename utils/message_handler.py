@@ -1,6 +1,5 @@
 import paho.mqtt.client as mqtt
 import json
-import requests
 import logging
 from threading import Lock
 from datetime import datetime
@@ -133,6 +132,7 @@ class MessageHandler:
                 severity=severity,
                 is_resolved=False
             )
+            
             print(f"alert id = {alert_id}")
             if alert_id:
                 with self.data_lock:
@@ -145,33 +145,6 @@ class MessageHandler:
                         'original_payload': payload
                     }
                 self.logger.info(f"Created new alert (ID: {alert_id}) for device {device_id}")
-                try:
-                    url = "https://pey.my.id/api/send-alert"
-                    headers = {
-                        "Content-Type": "application/json",
-                        "Accept": "application/json"
-                    }
-                    
-                    alert_data = {
-                        "id": device_id,
-                        "type": alert_type,
-                        "message": message,
-                        "severity": severity
-                    }
-                    
-                    self.logger.debug(f"Sending alert to {url} with data: {alert_data}")
-                    
-                    response = requests.post(url, headers=headers, data=json.dumps(alert_data))
-                    
-                    if response.status_code == 200:
-                        self.logger.info(f"Alert notification sent successfully. Response: {response.text}")
-                    else:
-                        self.logger.warning(f"Alert notification failed. Status: {response.status_code}, Response: {response.text}")
-                        
-                except requests.exceptions.RequestException as e:
-                    self.logger.error(f"Error sending alert notification: {e}")
-                except Exception as e:
-                    self.logger.error(f"Unexpected error in notification: {e}")
                 
                 return True
             

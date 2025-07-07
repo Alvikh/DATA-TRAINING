@@ -2,7 +2,8 @@ from datetime import datetime
 from typing import List, Dict, Optional, Union
 from .db import MySQLDatabase
 import logging
-
+import json
+import requests
 class AlertManager:
     def __init__(self, db_config: dict, table_name: str = 'alerts'):
         self.db_config = db_config
@@ -84,6 +85,34 @@ class AlertManager:
 
             with MySQLDatabase(**self.db_config) as db:
                 if db.execute_query(query, params):
+                    try:
+                        url = "https://pey.my.id/api/send-alert"
+                        headers = {
+                            "Content-Type": "application/json",
+                            "Accept": "application/json"
+                        }
+                        
+                        alert_data = {
+                            "id": device_id,
+                            "type": alert_type,
+                            "message": message,
+                            "severity": severity
+                        }
+                        
+                        self.logger.debug(f"Sending alert to {url} with data: {alert_data}")
+                        
+                        response = requests.post(url, headers=headers, data=json.dumps(alert_data))
+                        
+                        if response.status_code == 200:
+                            self.logger.info(f"Alert notification sent successfully. Response: {response.text}")
+                        else:
+                            self.logger.warning(f"Alert notification failed. Status: {response.status_code}, Response: {response.text}")
+                            
+                    except requests.exceptions.RequestException as e:
+                        self.logger.error(f"Error sending alert notification: {e}")
+                    except Exception as e:
+                        self.logger.error(f"Unexpected error in notification: {e}")
+                    
                     return db.connection.cursor().lastrowid
             return None
 
