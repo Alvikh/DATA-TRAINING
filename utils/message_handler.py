@@ -196,9 +196,13 @@ class MessageHandler:
             # 4. Store to database
             measurement_id = self.energy_measurement.create(measurement_data)
             
+            measurement_id = self.energy_measurement.create(measurement_data)
             if not measurement_id:
-                self.logger.error("Failed to store measurement in database")
+                self.logger.error(f"Insert failed. Data: {measurement_data}")
                 return False
+            else:
+                self.logger.info(f"Insert success. ID: {measurement_id}")
+
                 
             # 5. Update in-memory cache
             with self.data_lock:
