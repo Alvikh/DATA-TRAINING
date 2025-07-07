@@ -62,7 +62,12 @@ class DeviceManager:
             if db.execute_query(query, device_data):
                 return db.connection.cursor().lastrowid
             return None
-
+    def device_exists(self, device_id: str) -> bool:
+        """Check if a device exists in the database"""
+        query = "SELECT 1 FROM devices WHERE device_id = %s LIMIT 1"
+        with MySQLDatabase(**self.db_config) as db:
+            result = db.execute_query(query, (device_id,), fetch=True)
+            return bool(result)
     def get_device(self, device_id: str) -> Optional[Dict]:
         """
         Get device by device_id (not the primary key ID)

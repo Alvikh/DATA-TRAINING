@@ -35,42 +35,28 @@ class EnergyMeasurement:
         self.db_config = db_config
 
     def create(self, measurement_data: Dict) -> Optional[int]:
-        """
-        Create a new energy measurement record
-        
-        Args:
-            measurement_data: Dictionary containing measurement values
-                Required keys: device_id, voltage, current, power, energy
-                Optional keys: frequency, power_factor, temperature, humidity, measured_at
-                
-        Returns:
-            ID of the newly created record or None if failed
-        """
-        required_fields = ['device_id', 'voltage', 'current', 'power', 'energy']
-        if not all(field in measurement_data for field in required_fields):
-            raise ValueError(f"Missing required fields: {required_fields}")
-
         query = """
-            INSERT INTO energy_measurements 
-            (device_id, voltage, current, power, energy, frequency, 
-            power_factor, temperature, humidity, measured_at,
-            created_at, updated_at)
-            VALUES (%(device_id)s, %(voltage)s, %(current)s, %(power)s, %(energy)s, 
-                    %(frequency)s, %(power_factor)s, %(temperature)s, %(humidity)s, 
-                    %(measured_at)s,
-                    NOW(), NOW())
-            """
-        
-        # Set default values for optional fields
-        measurement_data.setdefault('frequency', None)
-        measurement_data.setdefault('power_factor', None)
-        measurement_data.setdefault('temperature', None)
-        measurement_data.setdefault('humidity', None)
-        measurement_data.setdefault('measured_at', datetime.now())
-        
-        with MySQLDatabase(**self.db_config) as db:
-            if db.execute_query(query, measurement_data):
-                return db.connection.cursor().lastrowid
+        INSERT INTO energy_measurements 
+        (device_id, voltage, current, power, energy, frequency,
+        power_factor, temperature, humidity, measured_at)
+        VALUES (
+            %(device_id)s,
+            %(voltage)s,
+            %(current)s,
+            %(power)s,
+            %(energy)s,
+            %(frequency)s,
+            %(power_factor)s,
+            %(temperature)s,
+            %(humidity)s,
+            %(measured_at)s
+        )
+        """
+        try:
+            with MySQLDatabase(**self.db_config) as db:
+                return db.execute_query(query, measurement_data, return_lastrowid=True)
+        except Exception as e:
+            self.logger.error(f"Failed to create measurement: {e}")
             return None
 
     def get_by_id(self, measurement_id: int) -> Optional[Dict]:
