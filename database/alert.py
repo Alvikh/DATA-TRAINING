@@ -41,7 +41,7 @@ class AlertManager:
     def create_alert(
         self,
         device_id: Union[str, int],
-        alert_type: str,
+        type: str,
         message: str,
         severity: str,
         is_resolved: bool = False,
@@ -54,14 +54,14 @@ class AlertManager:
         
         existing_alerts = self.get_alerts(
             device_id=device_id,
-            alert_type=alert_type,
+            type=type,
             is_resolved=False,
             start_date=start_of_day,
             end_date=end_of_day
         )
         
         if existing_alerts:
-            self.logger.info(f"Duplicate alert found for device {device_id} (type: {alert_type}) - skipping creation")
+            self.logger.info(f"Duplicate alert found for device {device_id} (type: {type}) - skipping creation")
             return None
         
         # If no existing alert, proceed with creation
@@ -74,7 +74,7 @@ class AlertManager:
         now = datetime.now()
         params = (
             str(device_id),
-            alert_type,
+            type,
             message,
             severity.lower(),
             is_resolved,
