@@ -1,1 +1,15 @@
-data/*
+# Abaikan file Python bytecode
+*.pyc
+__pycache__/
+
+# Abaikan file editor
+.vscode/
+.idea/
+
+# Abaikan file sistem
+.DS_Store
+Thumbs.db
+
+# Abaikan virtual environment
+venv/
+env/
