@@ -114,7 +114,7 @@ class MessageHandler:
 
             # Extract alert data
             device_id = payload['device_id']
-            type = payload['type']
+            alert_type = payload['type']
             message = payload['message']
             severity = payload['severity'].lower()
             
@@ -127,7 +127,7 @@ class MessageHandler:
             # Create alert in database
             alert_id = self.alert_manager.create_alert(
                 device_id=device_id,
-                type=type,
+                type=alert_type,
                 message=message,
                 severity=severity,
                 is_resolved=False
@@ -138,12 +138,32 @@ class MessageHandler:
                     self.latest_data[topic] = {
                         'alert_id': alert_id,
                         'device_id': device_id,
-                        'type': type,
+                        'type': alert_type,
                         'severity': severity,
                         'timestamp': datetime.now().isoformat(),
                         'original_payload': payload
                     }
                 self.logger.info(f"Created new alert (ID: {alert_id}) for device {device_id}")
+                
+                # Send alert email notification
+                try:
+                    from api.alert import send_alert_email
+                    email_response = send_alert_email(
+                        device_id=device_id,
+                        alert_type=alert_type,
+                        message=message,
+                        severity=severity
+                    )
+                    
+                    if email_response:
+                        self.logger.info(f"Alert email sent successfully. Response: {email_response}")
+                    else:
+                        self.logger.warning("Failed to send alert email")
+                except ImportError:
+                    self.logger.error("Could not import send_alert_email from api.alert")
+                except Exception as e:
+                    self.logger.error(f"Error sending alert email: {e}")
+                
                 return True
             
             self.logger.error(f"Failed to create alert in database: {alert_id}")
@@ -152,6 +172,7 @@ class MessageHandler:
         except Exception as e:
             self.logger.error(f"Error processing alert message: {e}", exc_info=True)
             return False
+        
     def _handle_monitoring_message(self, topic: str, payload: dict) -> bool:
         """Handle telemetry data and store in database"""
         try:
@@ -231,3 +252,4 @@ class MessageHandler:
             if topic:
                 return self.latest_data.get(topic)
             return self.latest_data.copy()
+        
