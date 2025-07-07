@@ -1,3 +1,6 @@
+import os
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+
 from flask import Flask, request, jsonify, send_file
 from datetime import datetime,timedelta
 import os
