@@ -5,18 +5,21 @@ from threading import Lock
 from datetime import datetime
 from database.device import DeviceManager
 from database.alert import AlertManager
+from database.energy_measurement import EnergyMeasurement  # tambahkan ini di atas
+
 class MessageHandler:
     def __init__(self, db_config: dict):
-        """
-        Initialize message handler with database configuration
-        
-        Args:
-            db_config: Database configuration dictionary
-        """
+        print(">>> 6")
         self.logger = logging.getLogger(f"{__name__}.MessageHandler")
+        print(">>> 7")
         self.device_manager = DeviceManager(db_config)
+        print(">>> 8")
         self.alert_manager = AlertManager(db_config)
+        print(">>> 9")
+        self.energy_measurement = EnergyMeasurement(db_config)  # 🔧 TAMBAHKAN INI
+        print(">>> 10")
         self.latest_data = {}
+        print(">>> 11")
         self.data_lock = Lock()
 
     def handle_message(self, topic: str, payload: str) -> bool:

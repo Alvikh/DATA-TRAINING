@@ -1,4 +1,4 @@
-from database import MySQLDatabase
+from .db import MySQLDatabase
 from datetime import datetime
 from typing import List, Dict, Optional
 

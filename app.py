@@ -1,5 +1,6 @@
 import os
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
+print(">>> 1")
 
 from flask import Flask, request, jsonify, send_file
 from datetime import datetime,timedelta
@@ -17,6 +18,7 @@ from utils.prediction_utils import (
     predict_future,        # Import fungsi baru
     generate_plot
 )
+print(">>> 2")
 
 app = Flask(__name__)
 
@@ -25,20 +27,25 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(BASE_DIR, 'models')
 MODEL_PATH = os.path.join(MODEL_DIR, 'energy_model.pkl')
 SCALER_PATH = os.path.join(MODEL_DIR, 'scaler.pkl')
+print(">>> 3")
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+print(">>> 4")
 
 # Initialize MQTT Handler
 mqtt_handler = MQTTHandler(
     broker='broker.hivemq.com',
     port=1883,
 )
+print(">>> 5")
 
 # Connect to MQTT on startup
 try:
+    print(">>> Sebelum mqtt connect")
     mqtt_handler.connect()
+    print(">>> Setelah mqtt connect")
 except Exception as e:
     logger.error(f"Failed to initialize MQTT: {e}")
 
@@ -432,12 +439,13 @@ def get_mqtt_data_by_topic(topic):
       
 if __name__ == "__main__":
     # Buat folder models dan plots jika belum ada
+    print(">>> MASUK __main__ <<<")
     if not os.path.exists(MODEL_DIR):
         os.makedirs(MODEL_DIR)
     plot_dir = os.path.join(BASE_DIR, 'plots')
     if not os.path.exists(plot_dir):
         os.makedirs(plot_dir)
-    
+
     # Connect to MQTT
     try:
         mqtt_handler.connect()
