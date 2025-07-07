@@ -12,7 +12,7 @@ def send_alert_email(device_id, alert_type, message, severity):
     - severity: The severity level (e.g., "low")
     """
     # API endpoint URL
-    url = "https://pey.my.id/send-alert"
+    url = "https://pey.my.id/api/send-alert"
     
     # Request headers (add any required headers like Authorization if needed)
     headers = {
