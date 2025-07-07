@@ -52,7 +52,7 @@ class EnergyMeasurement:
             %(measured_at)s                     -- TIMESTAMP
         )
         """
-        print(query)
+        # print(query)
         # Convert and validate all numeric values
         try:
             params = {

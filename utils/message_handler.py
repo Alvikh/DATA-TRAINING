@@ -147,22 +147,32 @@ class MessageHandler:
                 
                 # Send alert email notification
                 try:
-                    from api.alert import send_alert_email
-                    email_response = send_alert_email(
-                        device_id=device_id,
-                        alert_type=alert_type,
-                        message=message,
-                        severity=severity
-                    )
+                    url = "https://pey.my.id/api/send-alert"
+                    headers = {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    }
                     
-                    if email_response:
-                        self.logger.info(f"Alert email sent successfully. Response: {email_response}")
+                    alert_data = {
+                        "id": device_id,
+                        "type": alert_type,
+                        "message": message,
+                        "severity": severity
+                    }
+                    
+                    self.logger.debug(f"Sending alert to {url} with data: {alert_data}")
+                    
+                    response = requests.post(url, headers=headers, data=json.dumps(alert_data))
+                    
+                    if response.status_code == 200:
+                        self.logger.info(f"Alert notification sent successfully. Response: {response.text}")
                     else:
-                        self.logger.warning("Failed to send alert email")
-                except ImportError:
-                    self.logger.error("Could not import send_alert_email from api.alert")
+                        self.logger.warning(f"Alert notification failed. Status: {response.status_code}, Response: {response.text}")
+                        
+                except requests.exceptions.RequestException as e:
+                    self.logger.error(f"Error sending alert notification: {e}")
                 except Exception as e:
-                    self.logger.error(f"Error sending alert email: {e}")
+                    self.logger.error(f"Unexpected error in notification: {e}")
                 
                 return True
             
@@ -172,7 +182,6 @@ class MessageHandler:
         except Exception as e:
             self.logger.error(f"Error processing alert message: {e}", exc_info=True)
             return False
-        
     def _handle_monitoring_message(self, topic: str, payload: dict) -> bool:
         """Handle telemetry data and store in database"""
         try:
