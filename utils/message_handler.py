@@ -114,7 +114,7 @@ class MessageHandler:
 
             # Extract alert data
             device_id = payload['device_id']
-            alert_type = payload['type']
+            type = payload['type']
             message = payload['message']
             severity = payload['severity'].lower()
             
@@ -127,7 +127,7 @@ class MessageHandler:
             # Create alert in database
             alert_id = self.alert_manager.create_alert(
                 device_id=device_id,
-                alert_type=alert_type,
+                type=type,
                 message=message,
                 severity=severity,
                 is_resolved=False
@@ -138,7 +138,7 @@ class MessageHandler:
                     self.latest_data[topic] = {
                         'alert_id': alert_id,
                         'device_id': device_id,
-                        'type': alert_type,
+                        'type': type,
                         'severity': severity,
                         'timestamp': datetime.now().isoformat(),
                         'original_payload': payload
