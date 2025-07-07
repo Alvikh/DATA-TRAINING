@@ -59,7 +59,7 @@ class AlertManager:
             end_date=end_of_day
         )
     
-        if existing_alerts:
+        if len(existing_alerts)>0:
             self.logger.info(f"Duplicate alert found for device {device_id} (type: {type}) - skipping creation")
             return None
         
@@ -83,9 +83,7 @@ class AlertManager:
         )
 
         with MySQLDatabase(**self.db_config) as db:
-            if db.execute_query(query, params):
-                return db.cursor.lastrowid
-            return None
+            db.execute_query(query, params)
 
     def get_alerts(
         self,
