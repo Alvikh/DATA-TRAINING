@@ -155,43 +155,70 @@ class MessageHandler:
     def _handle_monitoring_message(self, topic: str, payload: dict) -> bool:
         """Handle telemetry data and store in database"""
         try:
-            # Extract device ID from topic (assuming format like "devices/PS-1001/telemetry")
-            device_id = topic.split('/')[1] if '/' in topic else topic
-            # Prepare measurement data for database
+            # 1. Extract and validate device ID
+            device_id = payload.get('id', '').strip()
+            if not device_id:
+                self.logger.error("No device ID in payload")
+                return False
+
+            # 2. Prepare and sanitize measurement data
+            measured_at = payload.get('measured_at')
+            try:
+                if measured_at:
+                    # Convert string timestamp to datetime object then format for MySQL
+                    measured_at = datetime.strptime(measured_at, '%Y-%m-%d %H:%M:%S')
+                else:
+                    measured_at = datetime.now()
+            except Exception as e:
+                self.logger.warning(f"Invalid timestamp format, using current time: {e}")
+                measured_at = datetime.now()
+
             measurement_data = {
-                'device_id': payload.get('id'),
-                'voltage': payload.get('voltage'),
-                'current': payload.get('current'),
-                'power': payload.get('power'),
-                'energy': payload.get('energy'),
-                'frequency': payload.get('frequency'),
-                'power_factor': payload.get('power_factor'),
-                'temperature': payload.get('temperature'),
-                'humidity': payload.get('humidity'),
-                'measured_at': datetime.now()
+                'device_id': device_id,
+                'voltage': float(payload.get('voltage', 0)) if payload.get('voltage') is not None else None,
+                'current': float(payload.get('current', 0)) if payload.get('current') is not None else None,
+                'power': float(payload.get('power', 0)) if payload.get('power') is not None else None,
+                'energy': float(payload.get('energy', 0)) if payload.get('energy') is not None else None,
+                'frequency': float(payload.get('frequency', 0)) if payload.get('frequency') is not None else None,
+                'power_factor': float(payload.get('power_factor', 0)) if payload.get('power_factor') is not None else None,
+                'temperature': float(payload.get('temperature')) if payload.get('temperature') is not None else None,
+                'humidity': float(payload.get('humidity')) if payload.get('humidity') is not None else None,
+                'measured_at': measured_at.strftime('%Y-%m-%d %H:%M:%S')  # MySQL format
             }
-            
-            print(f"data = {measurement_data}")
-            # Store to database
+
+            self.logger.debug(f"Prepared measurement data: {measurement_data}")
+
+            # 3. Verify device exists before insertion
+            if not self.device_manager.device_exists(device_id):
+                self.logger.error(f"Device {device_id} does not exist in database")
+                return False
+
+            # 4. Store to database
             measurement_id = self.energy_measurement.create(measurement_data)
             
             if not measurement_id:
                 self.logger.error("Failed to store measurement in database")
                 return False
                 
-            # Also keep in memory
+            # 5. Update in-memory cache
             with self.data_lock:
                 self.latest_data[topic] = {
                     'data': payload,
                     'timestamp': datetime.now().isoformat(),
-                    'db_id': measurement_id  # Store the database ID for reference
+                    'db_id': measurement_id
                 }
                 
-            self.logger.debug(f"Stored telemetry data from {topic} (ID: {measurement_id})")
+            self.logger.info(f"Successfully stored telemetry from {device_id} (ID: {measurement_id})")
             return True
             
+        except ValueError as ve:
+            self.logger.error(f"Data conversion error: {ve}", exc_info=True)
+            return False
+        except KeyError as ke:
+            self.logger.error(f"Missing key in payload: {ke}", exc_info=True)
+            return False
         except Exception as e:
-            self.logger.error(f"Monitoring message error: {e}", exc_info=True)
+            self.logger.error(f"Unexpected error processing message: {e}", exc_info=True)
             return False
 
     def get_latest_data(self, topic: str = None) -> dict:
