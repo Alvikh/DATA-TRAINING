@@ -1,19 +1,27 @@
+import sys
+print("FILE INI SEDANG DIJALANKAN:", sys.argv[0])
+
+print("===> MULAI APP")
 from flask import Flask, request, jsonify, send_file
 from datetime import datetime,timedelta
 import os
 import pandas as pd
 
-import json
-import logging
+print("===> IMPORT FLASK DONE")
 
 from utils.mqtt_handler import MQTTHandler
+print("===> IMPORT MQTT HANDLER DONE")
+
 from utils.prediction_utils import (
     load_model_and_scaler,
-    generate_future_dates, # Import fungsi baru
-    prepare_future_data,   # Import fungsi baru
-    predict_future,        # Import fungsi baru
+    generate_future_dates,
+    prepare_future_data,
+    predict_future,
     generate_plot
 )
+import json
+import logging
+print("===> IMPORT prediction_utils DONE")
 
 app = Flask(__name__)
 
@@ -426,19 +434,25 @@ def get_mqtt_data_by_topic(topic):
             'message': str(e)
         }), 500
 
-      
+print("Hello dari tes.py")
 if __name__ == "__main__":
-    # Buat folder models dan plots jika belum ada
+    print("===> MASUK __main__")
+
     if not os.path.exists(MODEL_DIR):
         os.makedirs(MODEL_DIR)
     plot_dir = os.path.join(BASE_DIR, 'plots')
     if not os.path.exists(plot_dir):
         os.makedirs(plot_dir)
-    
-    # Connect to MQTT
+
+    print("===> SEBELUM MQTT CONNECT")
+
     try:
         mqtt_handler.connect()
+        print("===> MQTT CONNECT SUCCESS")
     except Exception as e:
         logger.error(f"Failed to initialize MQTT: {e}")
-    
+        print("===> MQTT CONNECT FAILED")
+
+    print("===> SEBELUM app.run()")
+
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5050)))

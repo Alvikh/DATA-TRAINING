@@ -42,8 +42,8 @@ class MessageHandler:
             # Route to appropriate handler
             if "smartpower/device/status" in topic:
                 return self._handle_status_message(topic, payload_data)
-            # elif "smartpower/device/control" in topic:
-            #     return self._handle_control_message(topic, payload_data)
+            elif "smartpower/device/control" in topic:
+                return self._handle_control_message(topic, payload_data)
             elif "smartpower/device/alert" in topic:
                 return self._handle_alert_message(topic, payload_data)
             elif "iot/monitoring" in topic:
@@ -149,23 +149,51 @@ class MessageHandler:
         except Exception as e:
             self.logger.error(f"Error processing alert message: {e}", exc_info=True)
             return False
-    def _handle_monitoring_message(self, topic: str, payload: dict) -> bool:
-        """Handle telemetry data"""
-        try:
-            with self.data_lock:
-                self.latest_data[topic] = {
-                    'data': payload,
-                    'timestamp': datetime.now().isoformat()
-                }
-            self.logger.debug(f"Stored telemetry data from {topic}")
-            return True
-        except Exception as e:
-            self.logger.error(f"Monitoring message error: {e}")
+def _handle_monitoring_message(self, topic: str, payload: dict) -> bool:
+    """Handle telemetry data and store in database"""
+    try:
+        # Extract device ID from topic (assuming format like "devices/PS-1001/telemetry")
+        device_id = topic.split('/')[1] if '/' in topic else topic
+        
+        # Prepare measurement data for database
+        measurement_data = {
+            'device_id': device_id,
+            'voltage': payload.get('voltage'),
+            'current': payload.get('current'),
+            'power': payload.get('power'),
+            'energy': payload.get('energy'),
+            'frequency': payload.get('frequency'),
+            'power_factor': payload.get('power_factor'),
+            'temperature': payload.get('temperature'),
+            'humidity': payload.get('humidity'),
+            'measured_at': datetime.now()
+        }
+        
+        # Store to database
+        measurement_id = self.energy_measurement.create(measurement_data)
+        
+        if not measurement_id:
+            self.logger.error("Failed to store measurement in database")
             return False
-
-    def get_latest_data(self, topic: str = None) -> dict:
-        """Get latest processed message data"""
+            
+        # Also keep in memory
         with self.data_lock:
-            if topic:
-                return self.latest_data.get(topic)
-            return self.latest_data.copy()
+            self.latest_data[topic] = {
+                'data': payload,
+                'timestamp': datetime.now().isoformat(),
+                'db_id': measurement_id  # Store the database ID for reference
+            }
+            
+        self.logger.debug(f"Stored telemetry data from {topic} (ID: {measurement_id})")
+        return True
+        
+    except Exception as e:
+        self.logger.error(f"Monitoring message error: {e}", exc_info=True)
+        return False
+
+def get_latest_data(self, topic: str = None) -> dict:
+    """Get latest processed message data"""
+    with self.data_lock:
+        if topic:
+            return self.latest_data.get(topic)
+        return self.latest_data.copy()
