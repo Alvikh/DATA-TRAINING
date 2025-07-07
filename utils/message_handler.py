@@ -1,5 +1,6 @@
 import paho.mqtt.client as mqtt
 import json
+import requests
 import logging
 from threading import Lock
 from datetime import datetime
@@ -144,8 +145,6 @@ class MessageHandler:
                         'original_payload': payload
                     }
                 self.logger.info(f"Created new alert (ID: {alert_id}) for device {device_id}")
-                
-                # Send alert email notification
                 try:
                     url = "https://pey.my.id/api/send-alert"
                     headers = {
