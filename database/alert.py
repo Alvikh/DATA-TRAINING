@@ -83,7 +83,9 @@ class AlertManager:
             )
 
             with MySQLDatabase(**self.db_config) as db:
-                db.execute_query(query, params)
+                if db.execute_query(query, params):
+                    return db.connection.cursor().lastrowid
+            return None
 
     def get_alerts(
         self,
