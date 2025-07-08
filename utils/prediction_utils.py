@@ -166,7 +166,7 @@ def preprocess_input(input_data, poly_transformer=None, scaler=None, selected_fe
         df['hour'] = df['measured_at'].dt.hour
         df['day_of_week'] = df['measured_at'].dt.dayofweek
         df['is_weekend'] = (df['day_of_week'] >= 5).astype(int)
-        if 'hour' in df.columns and 'sin_hour' not in df.columns:
+    if 'hour' in df.columns and 'sin_hour' not in df.columns:
         df['sin_hour'] = np.sin(2 * np.pi * df['hour'] / 24)
         df['cos_hour'] = np.cos(2 * np.pi * df['hour'] / 24)
 
