@@ -216,5 +216,12 @@ def predict_energy_kwh(input_data, duration_minutes=5):
         return float(pred_kwh)
     except Exception as e:
         raise ValueError(f"Gagal melakukan prediksi energi kWh: {e}")
+def load_model_and_scaler(model_path, scaler_path):
+    try:
+        model = joblib.load(model_path)
+        scaler = joblib.load(scaler_path)
+        return model, scaler
+    except Exception as e:
+        raise Exception(f"Gagal memuat model atau scaler: {e}")
 
 
