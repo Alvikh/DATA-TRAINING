@@ -6,6 +6,7 @@ from flask import Flask, request, jsonify, send_file
 from datetime import datetime,timedelta
 import os
 import pandas as pd
+import numpy as np
 
 import json
 import logging
