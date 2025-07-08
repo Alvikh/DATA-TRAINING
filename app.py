@@ -12,10 +12,10 @@ import logging
 
 from utils.mqtt_handler import MQTTHandler
 from utils.prediction_utils import (
-    load_model_and_scaler,
-    generate_future_dates, # Import fungsi baru
-    prepare_future_data,   # Import fungsi baru
-    predict_future,        # Import fungsi baru
+    load_model_components,
+    generate_future_dates,
+    prepare_future_data,
+    preprocess_input,
     generate_plot
 )
 print(">>> 2")
