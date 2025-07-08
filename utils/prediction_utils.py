@@ -140,7 +140,6 @@ def generate_plot(dates, predictions, title="Prediksi Penggunaan Daya"):
 
 
 # === FUNGSI BARU UNTUK MODEL DENGAN FITUR INTERAKSI DAN POLYNOMIAL ===
-
 def load_model_components(model_path='models/energy_model.pkl',
                           scaler_path='models/scaler.pkl',
                           features_path='models/model_features.pkl',
@@ -153,6 +152,7 @@ def load_model_components(model_path='models/energy_model.pkl',
         return model, scaler, features, poly_transformer
     except Exception as e:
         raise RuntimeError(f"Gagal memuat model atau komponennya: {e}")
+
 
 
 def preprocess_input(input_data, poly_transformer=None, scaler=None, selected_features=None):
