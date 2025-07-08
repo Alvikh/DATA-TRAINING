@@ -1,7 +1,8 @@
+import logging
+from typing import Dict, List, Optional, Union
+
 import mysql.connector
 from mysql.connector import Error
-import logging
-from typing import Optional, Union, Dict, List
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -31,7 +32,7 @@ class MySQLDatabase:
         self.config = {
             'host': host,
             'user': user,
-            'password': password,
+            # 'password': password,
             'database': database,
             'port': port,
             'autocommit': False,  # Better to control transactions manually

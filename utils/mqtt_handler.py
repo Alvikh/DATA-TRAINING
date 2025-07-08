@@ -1,15 +1,19 @@
-import paho.mqtt.client as mqtt
 import json
-from .message_handler import MessageHandler
 import logging
-from threading import Lock
 from datetime import datetime
+from threading import Lock
+
+import paho.mqtt.client as mqtt
+
+from .message_handler import MessageHandler
+
+
 class MQTTHandler:
     def __init__(self, broker='broker.hivemq.com', port=1883, monitoring_topic='iot/monitoring', device_control_topic='smartpower/device/control', device_status_topic='smartpower/device/status', 
     device_alert_topic='smartpower/device/alert',
     control_topic_prefix=None):
         # DB_CONFIG = {
-        #     'host': 'localhost',
+        #     'host': '127.0.0.1',
         #     'user': 'root',
         #     'password': '',
         #     'database': 'peymyid_pey'
