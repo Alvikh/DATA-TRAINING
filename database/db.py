@@ -32,7 +32,7 @@ class MySQLDatabase:
         self.config = {
             'host': host,
             'user': user,
-            # 'password': password,
+            'password': password,
             'database': database,
             'port': port,
             'autocommit': False,  # Better to control transactions manually
