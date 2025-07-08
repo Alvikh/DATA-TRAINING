@@ -292,3 +292,4 @@ if __name__ == "__main__":
     # 6. Delete measurement
     delete_success = energy_meter.delete(measurement_id)
     print(f"\nDelete successful: {delete_success}")
+

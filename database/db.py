@@ -27,6 +27,7 @@ class MySQLDatabase:
             database: Database name
             port: Database port (default: 3306)
         """
+        print("mask")
         self.config = {
             'host': host,
             'user': user,
@@ -40,9 +41,13 @@ class MySQLDatabase:
         self.connection = None
 
     def __enter__(self):
-        """Context manager entry - establishes connection"""
-        self.connect()
+        connected = self.connect()
+        if not connected:
+            raise ConnectionError("❌ Gagal koneksi ke MySQL. Cek konfigurasi DB.")
+        else:
+            print("connect")
         return self
+
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit - ensures connection is closed"""

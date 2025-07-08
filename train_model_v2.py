@@ -143,10 +143,17 @@ def evaluate_model(model, scaler, X_test, y_test, numeric_features, feature_name
     rmse = np.sqrt(mse)
     r2 = r2_score(y_test, y_pred)
     
+    mean_target = y_test.mean()
+    rmse_ratio = (rmse / mean_target) * 100
+    
     print("\n📊 Evaluasi Model:")
+    print(f"MSE: {mse:.4f}")
     print(f"RMSE: {rmse:.4f}")
     print(f"R2 Score: {r2:.4f}")
-    
+    print(f"Rata-rata nilai aktual ({y_test.name}): {mean_target:.4f}")
+    print(f"Rasio RMSE terhadap rata-rata nilai: {rmse_ratio:.2f}%")
+
+    # Visualisasi Prediksi vs Aktual
     plt.figure(figsize=(10, 6))
     plt.scatter(y_test, y_pred, alpha=0.5)
     plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--')
@@ -156,6 +163,7 @@ def evaluate_model(model, scaler, X_test, y_test, numeric_features, feature_name
     plt.grid(True)
     plt.show()
     
+    # Visualisasi distribusi residual
     residuals = y_test - y_pred
     plt.figure(figsize=(10, 5))
     sns.histplot(residuals, bins=30, kde=True)
@@ -164,7 +172,7 @@ def evaluate_model(model, scaler, X_test, y_test, numeric_features, feature_name
     plt.grid(True)
     plt.show()
     
-    return rmse, r2
+    return mse, rmse, r2
 
 
 def retrain_model(
@@ -211,7 +219,7 @@ def retrain_model(
     
     # 5. Evaluasi model yang baru dilatih
     print("5. Mengevaluasi model yang baru dilatih...")
-    rmse, r2 = evaluate_model(new_model, new_scaler, X_test, y_test, numeric_features, new_selected_features)
+    mse, rmse, r2 = evaluate_model(new_model, new_scaler, X_test, y_test, numeric_features, new_selected_features)
     
     # 6. Simpan model dan scaler yang baru dilatih
     print("6. Menyimpan model dan scaler yang diperbarui...")
@@ -223,14 +231,14 @@ def retrain_model(
         print(f"✅ Model baru disimpan di {model_path}")
         print(f"✅ Scaler baru disimpan di {scaler_path}")
         print(f"✅ Nama fitur model baru disimpan di {os.path.join(os.path.dirname(model_path), 'model_features.pkl')}")
-        print(f"=== Retraining Model Selesai. RMSE: {rmse:.4f}, R2: {r2:.4f} ===")
+        print(f"=== Retraining Model Selesai. MSE: {mse:.4f}, RMSE: {rmse:.4f}, R2: {r2:.4f} ===")
     except Exception as e:
         print(f"❌ Gagal menyimpan model atau scaler: {e}")
 
 # --- MAIN EXECUTION (diperbarui untuk menunjukkan cara memanggil fungsi retraining) ---
 if __name__ == "__main__":
     # Konfigurasi
-    DATA_PATH = "data/train.csv"
+    DATA_PATH = "data/energy_measurements.csv"
     MODEL_PATH = "models/energy_model.pkl"
     SCALER_PATH = "models/scaler.pkl"
     TARGET = 'power'
