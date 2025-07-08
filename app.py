@@ -1,25 +1,23 @@
 import os
+
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 print(">>> 1")
 
-from database.energy_measurement import EnergyMeasurement
-from flask import Flask, request, jsonify, send_file
-from datetime import datetime,timedelta
-import os
-import pandas as pd
-import numpy as np
-
 import json
 import logging
+import os
+from datetime import datetime, timedelta
 
+import numpy as np
+import pandas as pd
+from flask import Flask, jsonify, request, send_file
+
+from database.energy_measurement import EnergyMeasurement
 from utils.mqtt_handler import MQTTHandler
-from utils.prediction_utils import (
-    load_model_components,
-    generate_future_dates,
-    prepare_future_data,
-    preprocess_input,
-    generate_plot
-)
+from utils.prediction_utils import (generate_future_dates, generate_plot,
+                                    load_model_components, prepare_future_data,
+                                    preprocess_input)
+
 print(">>> 2")
 
 app = Flask(__name__)
@@ -566,7 +564,7 @@ def api_predict_future():
             'duration_type': duration_type,
             'num_periods': num_periods,
             'start_date': start_date.strftime('%d-%m-%Y %H:%M:%S'),
-            'raw_predictions': formatted_predictions,  # Keep raw predictions if needed
+            # 'raw_predictions': formatted_predictions,  # Keep raw predictions if needed
             'daily_predictions': daily_predictions,
             'monthly_predictions': monthly_predictions,
             'yearly_predictions': yearly_predictions,
