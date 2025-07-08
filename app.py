@@ -273,81 +273,81 @@ def api_predict_future():
         request_data = request.get_json()
         logger.info(f"Received request data: {request_data}")
 
-        # Validasi input durasi prediksi
-        duration_type = request_data.get('duration_type')  # 'day', 'week', 'month', 'year'
+        # Validasi durasi
+        duration_type = request_data.get('duration_type')
         if duration_type not in ['day', 'week', 'month', 'year']:
             return jsonify({
                 'status': 'error',
-                'message': "Required field 'duration_type' must be 'day', 'week', 'month', or 'year'.",
+                'message': "Field 'duration_type' must be one of: 'day', 'week', 'month', 'year'.",
                 'timestamp': datetime.now().isoformat()
             }), 400
 
-        num_periods = int(request_data.get('num_periods', 1))  # Default 1 periode
-
-        # Ambil data sensor terakhir sebagai baseline
+        num_periods = int(request_data.get('num_periods', 1))
         last_sensor_data = request_data.get('last_sensor_data')
         if not last_sensor_data:
             return jsonify({
                 'status': 'error',
-                'message': "Required field 'last_sensor_data' is missing. Provide baseline sensor values.",
+                'message': "'last_sensor_data' is required.",
                 'timestamp': datetime.now().isoformat()
             }), 400
 
+        # Validasi field sensor
         required_baseline_keys = [
             'voltage', 'current', 'energy', 'frequency',
             'power_factor', 'temperature', 'humidity'
         ]
         for key in required_baseline_keys:
             if key not in last_sensor_data:
-                raise KeyError(f"Missing required field in 'last_sensor_data': '{key}'.")
+                raise KeyError(f"Missing field in 'last_sensor_data': '{key}'")
             try:
                 last_sensor_data[key] = float(last_sensor_data[key])
-            except (ValueError, TypeError):
-                raise ValueError(f"Invalid data type for '{key}' in 'last_sensor_data'. Must be numeric.")
+            except Exception:
+                raise ValueError(f"Invalid value for '{key}'; must be numeric")
 
-        # Tentukan tanggal mulai prediksi
-        start_date_str = request_data.get('start_date')  # Format 'DD-MM-YYYY HH:MM:SS'
+        # Start date (optional)
+        start_date_str = request_data.get('start_date')
         try:
             start_date = datetime.strptime(start_date_str, '%d-%m-%Y %H:%M:%S') if start_date_str else datetime.now()
-        except (ValueError, TypeError):
-            start_date = datetime.now()  # fallback
+        except Exception:
+            start_date = datetime.now()
 
-        # === Gunakan model dengan polynomial features ===
+        # Load model components
         model, scaler, features, poly_transformer = load_model_components()
 
-        # Daftar fitur numerik dan waktu
+        # Fitur waktu dan numerik
         numeric_features = [
             'voltage', 'current', 'energy',
             'frequency', 'power_factor', 'temperature', 'humidity'
         ]
         time_features = ['hour', 'day_of_week', 'month', 'is_weekend']
 
-        # 1. Generate future timestamps
+        # Generate future timestamps
         future_dates = generate_future_dates(start_date, duration_type, num_periods)
 
-        # 2. Buat future_df dengan baseline sensor
+        # Buat dataframe dasar
         future_df = prepare_future_data(future_dates, last_sensor_data, numeric_features, time_features)
 
-        # 3. Preprocess future data agar sesuai input saat training
+        # Preprocess agar sesuai model
         processed_df = preprocess_input(future_df, poly_transformer, scaler, features)
 
-        # 4. Prediksi
+        # Prediksi
         predictions = model.predict(processed_df)
 
-        # 5. Format hasil prediksi
+        # Format hasil
         formatted_predictions = []
         for i, pred in enumerate(predictions):
             formatted_predictions.append({
                 'timestamp': future_dates[i].strftime('%d-%m-%Y %H:%M:%S'),
-                'predicted_power': float(pred)  # Asumsi unit: Watt
+                'predicted_power': float(pred)
             })
 
-        # 6. Generate plot
-        plot_path = generate_plot(future_dates, predictions, title=f"Prediksi Daya untuk {num_periods} {duration_type.capitalize()}")
+        # Plot
+        plot_path = generate_plot(future_dates, predictions, title=f"Prediksi Daya {num_periods} {duration_type.capitalize()}")
         plot_url = f"/plots/{os.path.basename(plot_path)}"
 
         return jsonify({
             'status': 'success',
+            'device_id': request_data.get('device_id'),
             'duration_type': duration_type,
             'num_periods': num_periods,
             'start_date': start_date.strftime('%d-%m-%Y %H:%M:%S'),
@@ -359,13 +359,13 @@ def api_predict_future():
     except KeyError as e:
         return jsonify({
             'status': 'error',
-            'message': f'Missing required field: {str(e)}',
+            'message': f"Missing required field: {str(e)}",
             'timestamp': datetime.now().isoformat()
         }), 400
     except ValueError as e:
         return jsonify({
             'status': 'error',
-            'message': f'Invalid data value: {str(e)}',
+            'message': f"Invalid data value: {str(e)}",
             'timestamp': datetime.now().isoformat()
         }), 400
     except Exception as e:
@@ -375,6 +375,7 @@ def api_predict_future():
             'message': str(e),
             'timestamp': datetime.now().isoformat()
         }), 500
+
 
 
 # Endpoint untuk melayani file plot statis
