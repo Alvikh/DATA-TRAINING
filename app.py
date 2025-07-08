@@ -2,6 +2,7 @@ import os
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 print(">>> 1")
 
+from database.energy_measurement import EnergyMeasurement
 from flask import Flask, request, jsonify, send_file
 from datetime import datetime,timedelta
 import os
@@ -474,12 +475,85 @@ def api_predict_future():
         # Lakukan prediksi
         predictions = model.predict(processed_df)
 
-        # Format hasil prediksi
         formatted_predictions = []
         for i, pred in enumerate(predictions):
             formatted_predictions.append({
                 'timestamp': future_dates[i].strftime('%d-%m-%Y %H:%M:%S'),
                 'predicted_power': float(pred)
+            })
+
+        # Process raw predictions into aggregated data
+        def aggregate_predictions(predictions, duration_type):
+            aggregated = {}
+            for pred in predictions:
+                dt = datetime.strptime(pred['timestamp'], '%d-%m-%Y %H:%M:%S')
+                
+                if duration_type == 'day':
+                    key = dt.strftime('%d-%m-%Y')
+                elif duration_type == 'month':
+                    key = dt.strftime('%m-%Y')
+                elif duration_type == 'year':
+                    key = dt.strftime('%Y')
+                
+                if key not in aggregated:
+                    aggregated[key] = {
+                        'total_power': 0,
+                        'count': 0
+                    }
+                
+                # Convert power (W) to energy (kWh) assuming 1 hour intervals
+                # For hourly data, each prediction represents 1 hour
+                energy_kwh = pred['predicted_power'] / 1000  # Convert W to kW, then multiply by 1 hour
+                aggregated[key]['total_power'] += pred['predicted_power']
+                aggregated[key]['energy_kwh'] = aggregated[key].get('energy_kwh', 0) + energy_kwh
+                aggregated[key]['count'] += 1
+            
+            # Calculate average power and total energy for each period
+            result = []
+            for key, data in aggregated.items():
+                result.append({
+                    'period': key,
+                    'average_power_w': data['total_power'] / data['count'],
+                    'total_energy_kwh': data['energy_kwh'],
+                    # Assuming electricity cost of Rp 1,500 per kWh (adjust as needed)
+                    'estimated_cost': data['energy_kwh'] * 1500  
+                })
+            
+            return result
+
+        # Get aggregated predictions
+        daily_predictions = aggregate_predictions(formatted_predictions, 'day')
+        monthly_predictions = aggregate_predictions(formatted_predictions, 'month')
+        yearly_predictions = aggregate_predictions(formatted_predictions, 'year')
+
+        # Get historical data from database
+        DB_CONFIG = {
+            'host': 'localhost',
+            'user': 'peymyid_pey',
+            'password': 'Pey12345.#@',
+            'database': 'peymyid_pey'
+        }
+        energy_db = EnergyMeasurement(DB_CONFIG)
+        
+        device_id = request_data.get('device_id', 'default_device')
+        historical_data = energy_db.get_by_device(
+            device_id=device_id,
+            limit=100,
+            start_date=start_date - timedelta(days=30),  # Last 30 days
+            end_date=start_date
+        )
+
+        # Format historical data
+        formatted_history = []
+        for record in historical_data:
+            formatted_history.append({
+                'timestamp': record['measured_at'].strftime('%d-%m-%Y %H:%M:%S') if isinstance(record['measured_at'], datetime) else record['measured_at'],
+                'voltage': float(record['voltage']),
+                'current': float(record['current']),
+                'power': float(record['power']),
+                'energy': float(record['energy']),
+                'temperature': float(record['temperature']),
+                'humidity': float(record['humidity'])
             })
 
         # Buat plot
@@ -488,11 +562,15 @@ def api_predict_future():
 
         return jsonify({
             'status': 'success',
-            'device_id': request_data.get('device_id'),
+            'device_id': device_id,
             'duration_type': duration_type,
             'num_periods': num_periods,
             'start_date': start_date.strftime('%d-%m-%Y %H:%M:%S'),
-            'predictions': formatted_predictions,
+            'raw_predictions': formatted_predictions,  # Keep raw predictions if needed
+            'daily_predictions': daily_predictions,
+            'monthly_predictions': monthly_predictions,
+            'yearly_predictions': yearly_predictions,
+            'historical_data': formatted_history,
             'plot_url': plot_url,
             'timestamp': datetime.now().isoformat()
         })
