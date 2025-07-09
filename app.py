@@ -532,35 +532,26 @@ def api_predict_future():
             'database': 'peymyid_pey'
         }
         energy_db = EnergyMeasurement(DB_CONFIG)
-
+        
         device_id = request_data.get('device_id', 'default_device')
-
-        # Ambil data historis 30 hari terakhir dan agregasikan per jam
-        historical_hourly = energy_db.get_aggregated_stats(
+        historical_data = energy_db.get_by_device(
             device_id=device_id,
-            time_window='hour',  # Agregasi per jam
-            start_date=start_date - timedelta(days=30),  # 30 hari terakhir
+            limit=100,
+            start_date=start_date - timedelta(days=30),  # Last 30 days
             end_date=start_date
         )
 
-        # Format data historis per jam
+        # Format historical data
         formatted_history = []
-        for record in historical_hourly:
-            # Hitung rata-rata per jam
-            avg_power = record['total_power'] / record['count'] if record['count'] > 0 else 0
-            avg_energy = record['total_energy'] / record['count'] if record['count'] > 0 else 0
-            
+        for record in historical_data:
             formatted_history.append({
-                'timestamp': record['time_period'].strftime('%d-%m-%Y %H:%M:%S'),
-                'hour': record['time_period'].hour,
-                'avg_voltage': record['avg_voltage'],
-                'avg_current': record['avg_current'],
-                'avg_power': avg_power,
-                'avg_energy': avg_energy,
-                'avg_frequency': record['avg_frequency'],
-                'avg_power_factor': record['avg_power_factor'],
-                'avg_temperature': record['avg_temperature'],
-                'avg_humidity': record['avg_humidity']
+                'timestamp': record['measured_at'].strftime('%d-%m-%Y %H:%M:%S') if isinstance(record['measured_at'], datetime) else record['measured_at'],
+                'voltage': float(record['voltage']),
+                'current': float(record['current']),
+                'power': float(record['power']),
+                'energy': float(record['energy']),
+                'temperature': float(record['temperature']),
+                'humidity': float(record['humidity'])
             })
 
         # Buat plot
@@ -577,7 +568,7 @@ def api_predict_future():
             'daily_predictions': daily_predictions,
             'monthly_predictions': monthly_predictions,
             'yearly_predictions': yearly_predictions,
-            'historical_data': formatted_history,   
+            'historical_data': formatted_history,
             'plot_url': plot_url,
             'timestamp': datetime.now().isoformat()
         })
