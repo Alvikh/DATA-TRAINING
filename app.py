@@ -14,7 +14,7 @@ from flask import Flask, jsonify, request, send_file
 
 from database.energy_measurement import EnergyMeasurement
 from utils.mqtt_handler import MQTTHandler
-from utils.prediction_utils import (generate_future_dates, generate_plot,
+from utils.prediction_utils import (generate_future_dates,
                                     load_model_components, prepare_future_data,
                                     preprocess_input)
 
@@ -525,10 +525,16 @@ def api_predict_future():
         yearly_predictions = aggregate_predictions(formatted_predictions, 'year')
 
         # Get historical data from database
+        # DB_CONFIG = {
+        #     'host': 'localhost',
+        #     'user': 'peymyid_pey',
+        #     'password': 'Pey12345.#@',
+        #     'database': 'peymyid_pey'
+        # }
         DB_CONFIG = {
-            'host': 'localhost',
-            'user': 'peymyid_pey',
-            'password': 'Pey12345.#@',
+            'host': '127.0.0.1',
+            'user': 'root',
+            'password': '',
             'database': 'peymyid_pey'
         }
         energy_db = EnergyMeasurement(DB_CONFIG)
@@ -555,8 +561,8 @@ def api_predict_future():
             })
 
         # Buat plot
-        plot_path = generate_plot(future_dates, predictions, title=f"Prediksi Daya {num_periods} {duration_type.capitalize()}")
-        plot_url = f"/plots/{os.path.basename(plot_path)}"
+        # plot_path = generate_plot(future_dates, predictions, title=f"Prediksi Daya {num_periods} {duration_type.capitalize()}")
+        # plot_url = f"/plots/{os.path.basename(plot_path)}"
 
         return jsonify({
             'status': 'success',
@@ -569,7 +575,6 @@ def api_predict_future():
             'monthly_predictions': monthly_predictions,
             'yearly_predictions': yearly_predictions,
             'historical_data': formatted_history,
-            'plot_url': plot_url,
             'timestamp': datetime.now().isoformat()
         })
 

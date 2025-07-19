@@ -1,6 +1,8 @@
-from .db import MySQLDatabase
 from datetime import datetime
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
+
+from .db import MySQLDatabase
+
 
 class DeviceManager:
     """
@@ -15,7 +17,7 @@ class DeviceManager:
         building VARCHAR(100),
         installation_date DATE,
         status VARCHAR(20) DEFAULT 'active',
-        state VARCHAR(20) DEFAULT 'offline',
+        state VARCHAR(20) DEFAULT 'inactive',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX (owner_id),
@@ -54,7 +56,7 @@ class DeviceManager:
         
         # Set default values
         device_data.setdefault('status', 'active')
-        device_data.setdefault('state', 'offline')
+        device_data.setdefault('state', 'OFF')
         device_data.setdefault('building', None)
         device_data.setdefault('installation_date', None)
         
@@ -204,7 +206,7 @@ class DeviceManager:
         Returns:
             List of devices in the specified state
         """
-        query = "SELECT * FROM devices WHERE state = %s ORDER BY updated_at DESC"
+        query = "SELECT * FROM devices WHERE status = %s ORDER BY updated_at DESC"
         with MySQLDatabase(**self.db_config) as db:
             return db.execute_query(query, (state.lower(),), fetch=True) or []
 
@@ -222,7 +224,7 @@ class DeviceManager:
         if not device_ids:
             return 0
             
-        valid_states = {'online', 'offline', 'maintenance', 'error'}
+        valid_states = {'active', 'inactive', 'maintenance', 'error'}
         if new_state.lower() not in valid_states:
             raise ValueError(f"Invalid state. Must be one of: {valid_states}")
         
@@ -234,7 +236,7 @@ class DeviceManager:
         
         query = f"""
         UPDATE devices 
-        SET state = %s 
+        SET status = %s 
         WHERE device_id IN ({placeholders})
         """
         
@@ -242,3 +244,43 @@ class DeviceManager:
             if db.execute_query(query, tuple(params)):
                 return db.connection.cursor().rowcount
             return 0
+    def get_all_device_ids(self) -> List[str]:
+        """Get list of all registered device IDs from database"""
+        query = "SELECT device_id FROM devices"
+        with MySQLDatabase(**self.db_config) as db:
+            results = db.execute_query(query, fetch=True)
+            return [row['device_id'] for row in results] if results else []
+    def get_devices_statuses(self, device_ids: List[str]) -> Dict[str, str]:
+        """
+        Get current statuses for multiple devices
+        
+        Args:
+            device_ids: List of device IDs to check
+            
+        Returns:
+            Dictionary of {device_id: status}
+        """
+        if not device_ids:
+            return {}
+            
+        placeholders = ', '.join(['%s'] * len(device_ids))
+        query = f"""
+        SELECT device_id, status 
+        FROM devices 
+        WHERE device_id IN ({placeholders})
+        """
+        
+        with MySQLDatabase(**self.db_config) as db:
+            results = db.execute_query(query, tuple(device_ids), fetch=True)
+            return {row['device_id']: row['status'] for row in results} if results else {}
+    def get_all_devices_with_status(self) -> Dict[str, str]:
+        """
+        Get all devices with their current statuses
+        
+        Returns:    
+            Dictionary of {device_id: status}
+        """
+        query = "SELECT device_id, status FROM devices"
+        with MySQLDatabase(**self.db_config) as db:
+            results = db.execute_query(query, fetch=True)
+            return {row['device_id']: row['status'] for row in results} if results else {}

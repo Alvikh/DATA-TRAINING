@@ -1,9 +1,13 @@
-from datetime import datetime
-from typing import List, Dict, Optional, Union
-from .db import MySQLDatabase
-import logging
 import json
+import logging
+from datetime import datetime
+from typing import Dict, List, Optional, Union
+
 import requests
+
+from .db import MySQLDatabase
+
+
 class AlertManager:
     def __init__(self, db_config: dict, table_name: str = 'alerts'):
         self.db_config = db_config
@@ -86,7 +90,7 @@ class AlertManager:
             with MySQLDatabase(**self.db_config) as db:
                 if db.execute_query(query, params):
                     try:
-                        url = "https://pey.my.id/api/send-alert"
+                        url = "http://192.168.1.10:8000/api/send-alert"
                         headers = {
                             "Content-Type": "application/json",
                             "Accept": "application/json"
@@ -94,7 +98,7 @@ class AlertManager:
                         
                         alert_data = {
                             "id": device_id,
-                            "type": alert_type,
+                            "type": type,
                             "message": message,
                             "severity": severity
                         }

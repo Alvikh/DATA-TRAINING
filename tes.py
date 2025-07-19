@@ -50,7 +50,7 @@
 
 from utils.prediction_utils import predict_energy_kwh
 
-# 🔮 Contoh data untuk prediksi energi (5 menit)
+# 🔮 Contoh data untuk prediksi energi
 sample_data = {
     "voltage": 217.6,
     "current": 0.33,
@@ -63,6 +63,8 @@ sample_data = {
     "measured_at": "2025-02-08 01:28:16"
 }
 
-predicted_kwh = predict_energy_kwh(sample_data, duration_minutes=5)
-print(f"\n🔋 Prediksi konsumsi energi selama 5 menit: {predicted_kwh:.5f} kWh")
+# Durasi 1 bulan = 30 hari × 24 jam × 60 menit = 43.200 menit
+predicted_kwh = predict_energy_kwh(sample_data, duration_minutes=43200)
+print(f"\n🔋 Prediksi konsumsi energi selama 1 bulan: {predicted_kwh:.5f} kWh")
+
 

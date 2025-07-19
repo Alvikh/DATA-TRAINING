@@ -1,11 +1,15 @@
-import paho.mqtt.client as mqtt
 import json
 import logging
-from threading import Lock
 from datetime import datetime
-from database.device import DeviceManager
+from threading import Lock
+
+import paho.mqtt.client as mqtt
+
 from database.alert import AlertManager
-from database.energy_measurement import EnergyMeasurement  # tambahkan ini di atas
+from database.device import DeviceManager
+from database.energy_measurement import \
+    EnergyMeasurement  # tambahkan ini di atas
+
 
 class MessageHandler:
     def __init__(self, db_config: dict):
@@ -49,10 +53,10 @@ class MessageHandler:
                 return self._handle_control_message(topic, payload_data)
             elif "smartpower/device/alert" in topic:
                 return self._handle_alert_message(topic, payload_data)
-            elif "iot/monitoring" in topic:
-                return self._handle_monitoring_message(topic, payload_data)
+            # elif "iot/monitoring" in topic:
+            #     return self._handle_monitoring_message(topic, payload_data)
             else:
-                self.logger.warning(f"No handler for topic: {topic}")
+                # self.logger.warning(f"No handler for topic: {topic}")
                 return False
                 
         except Exception as e:
