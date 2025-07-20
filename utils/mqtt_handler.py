@@ -15,12 +15,9 @@ class MQTTHandler:
                  device_control_topic='smartpower/device/control', device_status_topic='smartpower/device/status',device_sensor_topic='smartpower/device/sensor',
                  device_alert_topic='smartpower/device/alert', control_topic_prefix=None):
         # Initialize database configuration
-        DB_CONFIG = {
-            'host': '127.0.0.1',
-            'user': 'root',
-            'password': '',
-            'database': 'peymyid_pey'
-        }
+        with open('config.json', 'r') as f:
+            DB_CONFIG = json.load(f)
+
         
         # Initialize message handler first
         self.handler = MessageHandler(DB_CONFIG)
