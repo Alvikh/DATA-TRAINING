@@ -525,18 +525,18 @@ def api_predict_future():
         yearly_predictions = aggregate_predictions(formatted_predictions, 'year')
 
         # Get historical data from database
-        # DB_CONFIG = {
-        #     'host': 'localhost',
-        #     'user': 'peymyid_pey',
-        #     'password': 'Pey12345.#@',
-        #     'database': 'peymyid_pey'
-        # }
         DB_CONFIG = {
-            'host': '127.0.0.1',
-            'user': 'root',
-            'password': '',
+            'host': 'localhost',
+            'user': 'peymyid_pey',
+            'password': 'Pey12345.#@',
             'database': 'peymyid_pey'
         }
+        # DB_CONFIG = {
+        #     'host': '127.0.0.1',
+        #     'user': 'root',
+        #     'password': '',
+        #     'database': 'peymyid_pey'
+        # }
         energy_db = EnergyMeasurement(DB_CONFIG)
         
         device_id = request_data.get('device_id', 'default_device')
