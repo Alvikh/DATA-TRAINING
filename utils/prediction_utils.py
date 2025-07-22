@@ -130,7 +130,7 @@ def prepare_future_data(future_dates, last_sensor_data, selected_features):
     Mempersiapkan DataFrame untuk prediksi masa depan.
 
     Args:
-        future_dates (list): Daftar tanggal untuk prediksi
+        future_dates (list): Daftar datetime untuk prediksi
         last_sensor_data (dict): Data sensor terakhir
         selected_features (list): Daftar fitur yang digunakan model
 
@@ -141,30 +141,25 @@ def prepare_future_data(future_dates, last_sensor_data, selected_features):
 
     for dt in future_dates:
         row = {
-            'measured_at': pd.to_datetime(dt),
-            'voltage': last_sensor_data.get('voltage', 220),
-            'current': last_sensor_data.get('current', 1.5),
-            'temperature': last_sensor_data.get('temperature', 25),
-            'humidity': last_sensor_data.get('humidity', 60),
-            'energy': last_sensor_data.get('energy', 0),
-            'frequency': last_sensor_data.get('frequency', 50),
-            'power_factor': last_sensor_data.get('power_factor', 0.9),
+            'measured_at': dt,
+            'voltage': float(last_sensor_data.get('voltage', 220)),
+            'current': float(last_sensor_data.get('current', 1.5)),
+            'temperature': float(last_sensor_data.get('temperature', 25)),
+            'humidity': float(last_sensor_data.get('humidity', 60)),
+            'energy': float(last_sensor_data.get('energy', 0)),
+            'frequency': float(last_sensor_data.get('frequency', 50)),
+            'power_factor': float(last_sensor_data.get('power_factor', 0.9)),
         }
-
-        # Fitur waktu
-        row['hour'] = row['measured_at'].hour
-        row['day_of_week'] = row['measured_at'].dayofweek
-        row['month'] = row['measured_at'].month
-        row['is_weekend'] = int(row['day_of_week'] >= 5)
-        row['sin_hour'] = np.sin(2 * np.pi * row['hour'] / 24)
-        row['cos_hour'] = np.cos(2 * np.pi * row['hour'] / 24)
-
         future_data_list.append(row)
 
     future_df = pd.DataFrame(future_data_list)
 
-    # Filter hanya kolom yang digunakan oleh model
-    if selected_features:
-        future_df = future_df[selected_features]
+    # Tambahkan fitur waktu jika dibutuhkan oleh model
+    if 'hour' in selected_features:
+        future_df['hour'] = future_df['measured_at'].dt.hour
+    if 'day' in selected_features:
+        future_df['day'] = future_df['measured_at'].dt.day
+    if 'month' in selected_features:
+        future_df['month'] = future_df['measured_at'].dt.month
 
     return future_df
