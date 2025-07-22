@@ -441,7 +441,7 @@ def api_predict_future():
             start_date = datetime.now()
 
         # Load model components
-        model, scaler, features, poly_transformer = load_model_components()
+        model, scaler, features = load_model_components()
 
         # Define time and numeric features
         numeric_features = ['voltage', 'current', 'energy',
@@ -459,7 +459,7 @@ def api_predict_future():
         future_df['cos_hour'] = np.cos(2 * np.pi * future_df['hour'] / 24)
 
         # Preprocess data sesuai model
-        processed_df = preprocess_input(future_df, poly_transformer, scaler, features)
+        processed_df = preprocess_input(future_df, scaler, features)
 
         # Validasi fitur
         missing_cols = set(features) - set(processed_df.columns)
