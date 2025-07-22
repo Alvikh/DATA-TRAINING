@@ -452,7 +452,7 @@ def api_predict_future():
         future_dates = generate_future_dates(start_date, duration_type, num_periods)
 
         # Generate base data
-        future_df = prepare_future_data(future_dates, last_sensor_data, numeric_features, time_features)
+        future_df = prepare_future_data(future_dates, last_sensor_data, numeric_features)
 
         # Tambahkan fitur sin_hour dan cos_hour
         future_df['sin_hour'] = np.sin(2 * np.pi * future_df['hour'] / 24)
