@@ -9,12 +9,14 @@ from sklearn.preprocessing import StandardScaler
 
 def load_model_components(model_path='models/energy_model.pkl',
                          scaler_path='models/scaler.pkl',
-                         features_path='models/model_features.pkl'):
+                         features_path='models/model_features.pkl',
+                         poly_path='models/poly_transformer.pkl'):
     try:
         model = joblib.load(model_path)
         scaler = joblib.load(scaler_path)
         features = joblib.load(features_path)
-        return model, scaler, features
+        poly_transformer = joblib.load(poly_path)
+        return model, scaler, features, poly_transformer
     except Exception as e:
         raise RuntimeError(f"Gagal memuat model atau komponennya: {e}")
 
