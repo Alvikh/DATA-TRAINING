@@ -210,6 +210,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import datetime
 import os
+from sklearn.metrics import mean_absolute_error, median_absolute_error
+
 
 # Load Data
 def load_data(filepath):
@@ -282,6 +284,45 @@ def train_model(X_train, y_train, numeric_features):
     return model, scaler, X_train.columns.tolist()
 
 # Evaluate Model
+# def evaluate_model(model, scaler, X_test, y_test, numeric_features, feature_names):
+#     X_scaled = X_test.copy()
+#     scale_cols = [f for f in numeric_features if f in feature_names]
+#     X_scaled[scale_cols] = scaler.transform(X_test[scale_cols])
+
+#     y_pred = model.predict(X_scaled)
+
+#     mse = mean_squared_error(y_test, y_pred)
+#     rmse = np.sqrt(mse)
+#     r2 = r2_score(y_test, y_pred)
+#     mean_y = y_test.mean()
+#     ratio = (rmse / mean_y) * 100
+
+#     print("\n📈 === HASIL EVALUASI MODEL ===")
+#     print(f"MSE: {mse:.4f}")
+#     print(f"RMSE: {rmse:.4f}")
+#     print(f"R² Score: {r2:.4f}")
+#     print(f"Rata-rata Aktual: {mean_y:.4f}")
+#     print(f"Rasio RMSE terhadap Rata-rata: {ratio:.2f}%")
+
+#     plt.figure(figsize=(10, 6))
+#     plt.scatter(y_test, y_pred, alpha=0.5)
+#     plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--')
+#     plt.xlabel("Aktual")
+#     plt.ylabel("Prediksi")
+#     plt.title("Prediksi vs Aktual")
+#     plt.grid(True)
+#     plt.show()
+
+#     residuals = y_test - y_pred
+#     plt.figure(figsize=(10, 5))
+#     sns.histplot(residuals, bins=30, kde=True)
+#     plt.title('Distribusi Residual')
+#     plt.xlabel('Error (Aktual - Prediksi)')
+#     plt.grid(True)
+#     plt.show()
+
+#     return mse, rmse, r2
+
 def evaluate_model(model, scaler, X_test, y_test, numeric_features, feature_names):
     X_scaled = X_test.copy()
     scale_cols = [f for f in numeric_features if f in feature_names]
@@ -289,19 +330,29 @@ def evaluate_model(model, scaler, X_test, y_test, numeric_features, feature_name
 
     y_pred = model.predict(X_scaled)
 
+    # METRIK DASAR
     mse = mean_squared_error(y_test, y_pred)
     rmse = np.sqrt(mse)
     r2 = r2_score(y_test, y_pred)
     mean_y = y_test.mean()
     ratio = (rmse / mean_y) * 100
 
+    # METRIK TAMBAHAN
+    mae = mean_absolute_error(y_test, y_pred)
+    mape = np.mean(np.abs((y_test - y_pred) / y_test)) * 100
+    med_ae = median_absolute_error(y_test, y_pred)
+
     print("\n📈 === HASIL EVALUASI MODEL ===")
-    print(f"MSE: {mse:.4f}")
-    print(f"RMSE: {rmse:.4f}")
-    print(f"R² Score: {r2:.4f}")
-    print(f"Rata-rata Aktual: {mean_y:.4f}")
+    print(f"MSE                           : {mse:.4f}")
+    print(f"RMSE                          : {rmse:.4f}")
+    print(f"MAE                           : {mae:.4f}")
+    print(f"Median Absolute Error         : {med_ae:.4f}")
+    print(f"MAPE                          : {mape:.2f}%")
+    print(f"R² Score                      : {r2:.4f}")
+    print(f"Rata-rata Aktual              : {mean_y:.4f}")
     print(f"Rasio RMSE terhadap Rata-rata: {ratio:.2f}%")
 
+    # Plot: Prediksi vs Aktual
     plt.figure(figsize=(10, 6))
     plt.scatter(y_test, y_pred, alpha=0.5)
     plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--')
@@ -311,6 +362,7 @@ def evaluate_model(model, scaler, X_test, y_test, numeric_features, feature_name
     plt.grid(True)
     plt.show()
 
+    # Plot: Distribusi Residual
     residuals = y_test - y_pred
     plt.figure(figsize=(10, 5))
     sns.histplot(residuals, bins=30, kde=True)
@@ -319,7 +371,7 @@ def evaluate_model(model, scaler, X_test, y_test, numeric_features, feature_name
     plt.grid(True)
     plt.show()
 
-    return mse, rmse, r2
+    return mse, rmse, r2, mae, mape, med_ae
 
 # Save Model
 def save_model_components(model, scaler, features, model_path, scaler_path):
