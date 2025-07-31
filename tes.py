@@ -65,3 +65,6 @@ sample_data = {
 predicted_kwh = predict_energy_kwh(sample_data, duration_minutes=43200)
 print(f"\n🔋 Prediksi konsumsi energi selama 1 bulan: {predicted_kwh:.5f} kWh")
 
+tarif_per_kwh = 1444.70
+total_biaya = predicted_kwh * tarif_per_kwh
+print(f"💰 Estimasi biaya listrik: Rp {total_biaya:,.2f}")

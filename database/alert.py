@@ -90,7 +90,7 @@ class AlertManager:
             with MySQLDatabase(**self.db_config) as db:
                 if db.execute_query(query, params):
                     try:
-                        url = "http://192.168.1.10:8000/api/send-alert"
+                        url = "http://pey.my.id/api/send-alert"
                         headers = {
                             "Content-Type": "application/json",
                             "Accept": "application/json"
