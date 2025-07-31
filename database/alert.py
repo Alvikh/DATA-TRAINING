@@ -106,7 +106,7 @@ class AlertManager:
     def _send_alert_notification(self, device_id: str, alert_type: str, message: str, severity: str):
         """Helper method to send alert notification to external API"""
         try:
-            url = "http://pey.my.id/api/send-alert"
+            url = "https://pey.my.id/api/send-alert"
             headers = {
                 "Content-Type": "application/json",
                 "Accept": "application/json"
