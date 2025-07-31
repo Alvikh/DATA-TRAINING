@@ -15,16 +15,12 @@ class AlertManager:
         self.logger = logging.getLogger(__name__)
         self._verify_table_structure()
 
-
     def _verify_table_structure(self):
-        print("8.1")
+        self.logger.debug("Verifying table structure")
         with MySQLDatabase(**self.db_config) as db:
-            print("8.2")
             if not db.table_exists(self.table_name):
-                print("8.3")
                 self.logger.warning(f"Table '{self.table_name}' does not exist")
                 # Optional: db.execute_query(self._create_table_sql())
-            print("8.4")
 
     def _create_table_sql(self) -> str:
         return f"""
@@ -43,87 +39,113 @@ class AlertManager:
             INDEX (severity)
         )
         """
+
     def create_alert(
-    self,
-    device_id: Union[str, int],
-    type: str,  # This is the parameter name
-    message: str,
-    severity: str,
-    is_resolved: bool = False,
-    resolved_at: Optional[datetime] = None
-) -> Optional[int]:
+        self,
+        device_id: Union[str, int],
+        type: str,
+        message: str,
+        severity: str,
+        is_resolved: bool = False,
+        resolved_at: Optional[datetime] = None
+    ) -> Optional[int]:
+        # Validate required fields
+        if not all([device_id, type, message, severity]):
+            self.logger.error("Missing required fields for alert creation")
+            return None
+
+        # Check for duplicate alerts
         today = datetime.now().date()
         start_of_day = datetime.combine(today, datetime.min.time())
         end_of_day = datetime.combine(today, datetime.max.time())
         
         existing_alerts = self.get_alerts(
             device_id=device_id,
-            alert_type=type,  # Changed from 'type' to 'alert_type' to match get_alerts parameter
+            alert_type=type,
             is_resolved=False,
             start_date=start_of_day,
             end_date=end_of_day     
         )
-        # print(existing_alerts)
-        if len(existing_alerts)>0:
+
+        if len(existing_alerts) > 0:
             self.logger.info(f"Duplicate alert found for device {device_id} (type: {type}) - skipping creation")
-            # return None
-        else:
-            # If no existing alert, proceed with creation
-            query = f"""
-            INSERT INTO {self.table_name} 
-            (device_id, type, message, severity, is_resolved, resolved_at, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """
-
-            now = datetime.now()
-            params = (
-                str(device_id),
-                type,
-                message,
-                severity.lower(),
-                is_resolved,
-                resolved_at,
-                now,
-                now
-            )
-
-            with MySQLDatabase(**self.db_config) as db:
-                if db.execute_query(query, params):
-                    try:
-                        url = "http://pey.my.id/api/send-alert"
-                        headers = {
-                            "Content-Type": "application/json",
-                            "Accept": "application/json"
-                        }
-                        
-                        alert_data = {
-                            "id": device_id,
-                            "type": type,
-                            "message": message,
-                            "severity": severity
-                        }
-                        
-                        self.logger.debug(f"Sending alert to {url} with data: {alert_data}")
-                        
-                        response = requests.post(url, headers=headers, data=json.dumps(alert_data))
-                        
-                        if response.status_code == 200:
-                            self.logger.info(f"Alert notification sent successfully. Response: {response.text}")
-                        else:
-                            self.logger.warning(f"Alert notification failed. Status: {response.status_code}, Response: {response.text}")
-                            
-                    except requests.exceptions.RequestException as e:
-                        self.logger.error(f"Error sending alert notification: {e}")
-                    except Exception as e:
-                        self.logger.error(f"Unexpected error in notification: {e}")
-                    
-                    return db.connection.cursor().lastrowid
             return None
+
+        # Insert new alert into database
+        query = f"""
+        INSERT INTO {self.table_name} 
+        (device_id, type, message, severity, is_resolved, resolved_at, created_at, updated_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """
+
+        now = datetime.now()
+        params = (
+            str(device_id),
+            type,
+            message,
+            severity.lower(),
+            is_resolved,
+            resolved_at,
+            now,
+            now
+        )
+
+        with MySQLDatabase(**self.db_config) as db:
+            if not db.execute_query(query, params):
+                self.logger.error("Failed to insert alert into database")
+                return None
+
+            alert_id = db.connection.cursor().lastrowid
+            self.logger.info(f"Alert created successfully with ID: {alert_id}")
+
+        # Send HTTP notification
+        self._send_alert_notification(device_id, type, message, severity)
+
+        return alert_id
+
+    def _send_alert_notification(self, device_id: str, alert_type: str, message: str, severity: str):
+        """Helper method to send alert notification to external API"""
+        try:
+            url = "http://pey.my.id/api/send-alert"
+            headers = {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+            
+            alert_data = {
+                "id": str(device_id),
+                "type": alert_type,
+                "message": message,
+                "severity": severity.lower()
+            }
+            
+            self.logger.debug(f"Sending alert to {url} with data: {alert_data}")
+            
+            # Using json parameter for automatic serialization
+            response = requests.post(
+                url,
+                json=alert_data,
+                headers=headers,
+                timeout=10  # Add timeout for safety
+            )
+            
+            if response.status_code == 200:
+                self.logger.info("Alert notification sent successfully")
+            else:
+                self.logger.warning(
+                    f"Alert notification failed. Status: {response.status_code}, "
+                    f"Response: {response.text}"
+                )
+                
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Error sending alert notification: {e}")
+        except Exception as e:
+            self.logger.error(f"Unexpected error in notification: {e}")
 
     def get_alerts(
         self,
         device_id: Optional[Union[str, int]] = None,
-        alert_type: Optional[str] = None,  # This is the parameter name we need to match
+        alert_type: Optional[str] = None,
         is_resolved: Optional[bool] = None,
         severity: Optional[str] = None,
         start_date: Optional[datetime] = None,
@@ -138,8 +160,8 @@ class AlertManager:
         if device_id:
             conditions.append("device_id = %s")
             params.append(str(device_id))
-        if alert_type:  # Using 'alert_type' consistently
-            conditions.append("type = %s")  # Note: 'type' is the column name in SQL
+        if alert_type:
+            conditions.append("type = %s")
             params.append(alert_type)
         if is_resolved is not None:
             conditions.append("is_resolved = %s")
@@ -161,7 +183,7 @@ class AlertManager:
 
         with MySQLDatabase(**self.db_config) as db:
             return db.execute_query(query, tuple(params), fetch=True) or []
-        
+
     def get_alert(self, alert_id: int) -> Optional[Dict]:
         query = f"SELECT * FROM {self.table_name} WHERE id = %s"
         with MySQLDatabase(**self.db_config) as db:
@@ -176,7 +198,7 @@ class AlertManager:
         params = []
 
         for key, value in kwargs.items():
-            if key == 'severity':
+            if key == 'severity' and value:
                 value = value.lower()
             set_clauses.append(f"{key} = %s")
             params.append(value)
