@@ -112,11 +112,16 @@ class AlertManager:
                 "Accept": "application/json"
             }
             
+            # Ensure all fields have non-empty values
+            if not all([device_id, alert_type, message, severity]):
+                self.logger.error("Missing required fields for alert notification")
+                return False
+
             alert_data = {
-                "id": str(device_id),
-                "type": alert_type,
-                "message": message,
-                "severity": severity.lower()
+                "id": str(device_id).strip(),
+                "type": str(alert_type).strip(),
+                "message": str(message).strip(),
+                "severity": str(severity).lower().strip()
             }
             
             self.logger.debug(f"Sending alert to {url} with data: {alert_data}")
@@ -124,24 +129,27 @@ class AlertManager:
             # Using json parameter for automatic serialization
             response = requests.post(
                 url,
-                json=alert_data,
+                json=alert_data,  # This automatically sets Content-Type and serializes
                 headers=headers,
-                timeout=10  # Add timeout for safety
+                timeout=10
             )
             
-            self.logger.info(response)
             if response.status_code == 200:
                 self.logger.info("Alert notification sent successfully")
+                return True
             else:
                 self.logger.warning(
                     f"Alert notification failed. Status: {response.status_code}, "
                     f"Response: {response.text}"
                 )
-                
+                return False
+                    
         except requests.exceptions.RequestException as e:
             self.logger.error(f"Error sending alert notification: {e}")
+            return False
         except Exception as e:
             self.logger.error(f"Unexpected error in notification: {e}")
+            return False
 
     def get_alerts(
         self,
