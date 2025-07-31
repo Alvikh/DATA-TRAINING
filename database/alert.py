@@ -129,6 +129,7 @@ class AlertManager:
                 timeout=10  # Add timeout for safety
             )
             
+            self.logger.info(response)
             if response.status_code == 200:
                 self.logger.info("Alert notification sent successfully")
             else:
