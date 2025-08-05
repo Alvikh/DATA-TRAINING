@@ -125,6 +125,7 @@ class AlertManager:
             }
             
             self.logger.debug(f"Sending alert to {url} with data: {alert_data}")
+            self.logger.debug(f"Sending alert to {url} with data: {alert_data}")
             
             # Using json parameter for automatic serialization
             response = requests.post(
