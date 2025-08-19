@@ -16,7 +16,7 @@ from sklearn.metrics import mean_absolute_error, median_absolute_error
 def load_data(filepath):
     try:
         data = pd.read_csv(filepath, parse_dates=['measured_at'])
-        print(f"\n📁 Data dari {filepath} berhasil dimuat.")
+        print(f"\n Data dari {filepath} berhasil dimuat.")
         print(data.head(3))
 
         required_columns = ['measured_at', 'voltage', 'current', 'power', 'energy',
@@ -26,7 +26,7 @@ def load_data(filepath):
             raise ValueError(f"Kolom yang diperlukan tidak ditemukan: {missing_cols}")
         return data
     except Exception as e:
-        print(f"❌ Gagal memuat data: {e}")
+        print(f"Gagal memuat data: {e}")
         exit()
 
 # Feature Engineering
@@ -77,7 +77,7 @@ def train_model(X_train, y_train, numeric_features):
         "Coefficient": model.coef_
     }).sort_values("Coefficient", ascending=False)
 
-    print("\n📌 Koefisien Model (Linear Regression):")
+    print("\n Koefisien Model (Linear Regression):")
     print(coef_df)
 
     return model, scaler, X_train.columns.tolist()
@@ -101,7 +101,7 @@ def evaluate_model(model, scaler, X_test, y_test, numeric_features, feature_name
     mape = np.mean(np.abs((y_test - y_pred) / y_test)) * 100
     med_ae = median_absolute_error(y_test, y_pred)
 
-    print("\n📈 === HASIL EVALUASI MODEL ===")
+    print("\n === HASIL EVALUASI MODEL ===")
     print(f"MSE                           : {mse:.4f}")
     print(f"RMSE                          : {rmse:.4f}")
     print(f"MAE                           : {mae:.4f}")
@@ -142,13 +142,13 @@ def save_model_components(model, scaler, features, model_path, scaler_path):
         with open("models/last_trained.txt", "w") as f:
             f.write(f"Last trained at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
-        print(f"✅ Model dan komponen berhasil disimpan.")
+        print(f"Model dan komponen berhasil disimpan.")
     except Exception as e:
-        print(f"❌ Gagal menyimpan: {e}")
+        print(f"Gagal menyimpan: {e}")
 
 # Retrain
 def retrain_model(data_filepath, model_path, scaler_path, target='power'):
-    print(f"\n🔁 Simulasi Retraining Otomatis dari {data_filepath}")
+    print(f"\n Simulasi Retraining Otomatis dari {data_filepath}")
     data = load_data(data_filepath)
     X, y, numeric, _ = prepare_data(data, target=target)
 
@@ -168,7 +168,7 @@ if __name__ == "__main__":
 
     os.makedirs("models", exist_ok=True)
 
-    print("\n🔧 Pelatihan Model Linear Regression")
+    print("\n Pelatihan Model Linear Regression")
     data = load_data(DATA_PATH)
     X, y, numeric, full_data = prepare_data(data, target=TARGET, log_transform=False)
 
@@ -176,19 +176,19 @@ if __name__ == "__main__":
     X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.4, random_state=42, shuffle=True)
     X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42, shuffle=True)
 
-    print(f"\n📊 Jumlah Data:")
+    print(f"\n Jumlah Data:")
     print(f"• Training   : {len(X_train)}")
     print(f"• Validation : {len(X_val)}")
     print(f"• Testing    : {len(X_test)}")
 
     model, scaler, selected_features = train_model(X_train, y_train, numeric)
 
-    print("\n🔎 Evaluasi pada Data Validasi")
+    print("\n Evaluasi pada Data Validasi")
     evaluate_model(model, scaler, X_val, y_val, numeric, selected_features)
 
-    print("\n🧪 Evaluasi pada Data Testing")
+    print("\n Evaluasi pada Data Testing")
     evaluate_model(model, scaler, X_test, y_test, numeric, selected_features)
 
     retrain_model(DATA_PATH, MODEL_PATH, SCALER_PATH, target=TARGET)
 
-    print("\n✅ Proses selesai.")
+    print("\n Proses selesai.")
