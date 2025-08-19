@@ -69,7 +69,7 @@ def train_model(X_train, y_train, numeric_features):
     X_scaled = X_train.copy()
     X_scaled[numeric_features] = scaler.fit_transform(X_train[numeric_features])
 
-    model = LinearRegression()
+    model = LinearRegression(positive=True)
     model.fit(X_scaled, y_train)
 
     coef_df = pd.DataFrame({
@@ -88,6 +88,7 @@ def evaluate_model(model, scaler, X_test, y_test, numeric_features, feature_name
     X_scaled[scale_cols] = scaler.transform(X_test[scale_cols])
 
     y_pred = model.predict(X_scaled)
+    y_pred = np.maximum(y_pred, 0)
 
     # METRIK DASAR
     mse = mean_squared_error(y_test, y_pred)
