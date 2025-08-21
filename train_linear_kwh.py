@@ -11,6 +11,7 @@ from datetime import datetime
 import os
 from sklearn.metrics import mean_absolute_error, median_absolute_error
 
+
 # Load Data
 def load_data(filepath):
     try:
@@ -28,19 +29,13 @@ def load_data(filepath):
         print(f"Gagal memuat data: {e}")
         exit()
 
-# Feature Engineering - PERBAIKAN UTAMA
+# Feature Engineering
 def prepare_data(data, target='power', log_transform=False, remove_outliers=True):
     if target not in data.columns:
         raise ValueError(f"Target column '{target}' tidak ditemukan.")
 
     data = data.copy()
-    
-    # PERBAIKAN 1: Pastikan target tidak negatif dan > 0
-    initial_count = len(data)
-    data = data[data[target] > 0]  # Hanya data positif
-    removed_negative = initial_count - len(data)
-    if removed_negative > 0:
-        print(f"⚠️  Data dengan {target} <= 0 dihapus: {removed_negative} records")
+    data = data[data[target] > 1]
 
     # Fitur waktu
     data['hour'] = data['measured_at'].dt.hour
@@ -49,33 +44,14 @@ def prepare_data(data, target='power', log_transform=False, remove_outliers=True
     data['sin_hour'] = np.sin(2 * np.pi * data['hour'] / 24)
     data['cos_hour'] = np.cos(2 * np.pi * data['hour'] / 24)
 
-    # Fitur turunan - PERBAIKAN 2: Pastikan fitur engineering valid
+    # Fitur turunan
     data['volt_curr'] = data['voltage'] * data['current']
     data['curr_squared'] = data['current'] ** 2
     data['temp_humid'] = data['temperature'] * data['humidity']
 
-    # PERBAIKAN 3: Validasi fitur engineering
-    print(f"✅ Fitur engineering selesai:")
-    print(f"   - volt_curr range: [{data['volt_curr'].min():.2f}, {data['volt_curr'].max():.2f}]")
-    print(f"   - curr_squared range: [{data['curr_squared'].min():.2f}, {data['curr_squared'].max():.2f}]")
-    print(f"   - temp_humid range: [{data['temp_humid'].min():.2f}, {data['temp_humid'].max():.2f}]")
-
     if remove_outliers:
-        # PERBAIKAN 4: Outlier removal yang lebih hati-hati
-        Q1 = data[target].quantile(0.25)
-        Q3 = data[target].quantile(0.75)
-        IQR = Q3 - Q1
-        lower_bound = Q1 - 1.5 * IQR
-        upper_bound = Q3 + 1.5 * IQR
-        
-        outliers_mask = (data[target] < lower_bound) | (data[target] > upper_bound)
-        outliers_removed = outliers_mask.sum()
-        data = data[~outliers_mask]
-        
-        print(f"📊 Outlier removal:")
-        print(f"   - IQR: {IQR:.2f}")
-        print(f"   - Bounds: [{lower_bound:.2f}, {upper_bound:.2f}]")
-        print(f"   - Outliers removed: {outliers_removed}")
+        z = np.abs((data[target] - data[target].mean()) / data[target].std())
+        data = data[z < 3]
 
     y = data[target]
 
@@ -84,16 +60,10 @@ def prepare_data(data, target='power', log_transform=False, remove_outliers=True
     time_features = ['sin_hour', 'cos_hour', 'is_weekend']
     X = data[base_features + time_features]
 
-    # PERBAIKAN 5: Validasi final data
-    print(f"📈 Final dataset:")
-    print(f"   - Samples: {len(X)}")
-    print(f"   - Target range: [{y.min():.2f}, {y.max():.2f}]")
-    print(f"   - Target mean: {y.mean():.2f}")
-
     numeric_features = base_features + time_features
     return X, y, numeric_features, data
 
-# Train Model - TIDAK DIUBAH
+# Train Model
 def train_model(X_train, y_train, numeric_features):
     scaler = StandardScaler()
     X_scaled = X_train.copy()
@@ -107,26 +77,18 @@ def train_model(X_train, y_train, numeric_features):
         "Coefficient": model.coef_
     }).sort_values("Coefficient", ascending=False)
 
-    print("\n📊 Koefisien Model (Linear Regression):")
+    print("\n Koefisien Model (Linear Regression):")
     print(coef_df)
 
     return model, scaler, X_train.columns.tolist()
 
-# Evaluate Model - PERBAIKAN: Pastikan prediksi tidak negatif
 def evaluate_model(model, scaler, X_test, y_test, numeric_features, feature_names):
     X_scaled = X_test.copy()
     scale_cols = [f for f in numeric_features if f in feature_names]
     X_scaled[scale_cols] = scaler.transform(X_test[scale_cols])
 
     y_pred = model.predict(X_scaled)
-    
-    # PERBAIKAN 6: Force non-negative predictions
     y_pred = np.maximum(y_pred, 0)
-    
-    # Debug prediksi
-    negative_predictions = (y_pred < 0).sum()
-    if negative_predictions > 0:
-        print(f"⚠️  WARNING: {negative_predictions} prediksi negatif dipaksa menjadi 0")
 
     # METRIK DASAR
     mse = mean_squared_error(y_test, y_pred)
@@ -137,10 +99,10 @@ def evaluate_model(model, scaler, X_test, y_test, numeric_features, feature_name
 
     # METRIK TAMBAHAN
     mae = mean_absolute_error(y_test, y_pred)
-    mape = np.mean(np.abs((y_test - y_pred) / np.maximum(y_test, 1))) * 100  # Avoid division by zero
+    mape = np.mean(np.abs((y_test - y_pred) / y_test)) * 100
     med_ae = median_absolute_error(y_test, y_pred)
 
-    print("\n=== HASIL EVALUASI MODEL ===")
+    print("\n === HASIL EVALUASI MODEL ===")
     print(f"MSE                           : {mse:.4f}")
     print(f"RMSE                          : {rmse:.4f}")
     print(f"MAE                           : {mae:.4f}")
@@ -171,7 +133,7 @@ def evaluate_model(model, scaler, X_test, y_test, numeric_features, feature_name
 
     return mse, rmse, r2, mae, mape, med_ae
 
-# Save Model - TIDAK DIUBAH
+# Save Model
 def save_model_components(model, scaler, features, model_path, scaler_path):
     try:
         joblib.dump(model, model_path)
@@ -181,13 +143,13 @@ def save_model_components(model, scaler, features, model_path, scaler_path):
         with open("models/last_trained.txt", "w") as f:
             f.write(f"Last trained at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
-        print(f"✅ Model dan komponen berhasil disimpan.")
+        print(f"Model dan komponen berhasil disimpan.")
     except Exception as e:
-        print(f"❌ Gagal menyimpan: {e}")
+        print(f"Gagal menyimpan: {e}")
 
-# Retrain - TIDAK DIUBAH
+# Retrain
 def retrain_model(data_filepath, model_path, scaler_path, target='power'):
-    print(f"\n🔄 Simulasi Retraining Otomatis dari {data_filepath}")
+    print(f"\n Simulasi Retraining Otomatis dari {data_filepath}")
     data = load_data(data_filepath)
     X, y, numeric, _ = prepare_data(data, target=target)
 
@@ -198,7 +160,7 @@ def retrain_model(data_filepath, model_path, scaler_path, target='power'):
     evaluate_model(model, scaler, X_test, y_test, numeric, selected)
     save_model_components(model, scaler, selected, model_path, scaler_path)
 
-# MAIN - TIDAK DIUBAH
+# MAIN
 if __name__ == "__main__":
     DATA_PATH = "data/energy_measurements.csv"
     MODEL_PATH = "models/energy_model.pkl"
@@ -207,7 +169,7 @@ if __name__ == "__main__":
 
     os.makedirs("models", exist_ok=True)
 
-    print("\n🎯 Pelatihan Model Linear Regression")
+    print("\n Pelatihan Model Linear Regression")
     data = load_data(DATA_PATH)
     X, y, numeric, full_data = prepare_data(data, target=TARGET, log_transform=False)
 
@@ -215,19 +177,19 @@ if __name__ == "__main__":
     X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.4, random_state=42, shuffle=True)
     X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42, shuffle=True)
 
-    print(f"\n📊 Jumlah Data:")
+    print(f"\n Jumlah Data:")
     print(f"• Training   : {len(X_train)}")
     print(f"• Validation : {len(X_val)}")
     print(f"• Testing    : {len(X_test)}")
 
     model, scaler, selected_features = train_model(X_train, y_train, numeric)
 
-    print("\n📋 Evaluasi pada Data Validasi")
+    print("\n Evaluasi pada Data Validasi")
     evaluate_model(model, scaler, X_val, y_val, numeric, selected_features)
 
-    print("\n📋 Evaluasi pada Data Testing")
+    print("\n Evaluasi pada Data Testing")
     evaluate_model(model, scaler, X_test, y_test, numeric, selected_features)
 
     retrain_model(DATA_PATH, MODEL_PATH, SCALER_PATH, target=TARGET)
 
-    print("\n✅ Proses selesai.")
+    print("\n Proses selesai.")
